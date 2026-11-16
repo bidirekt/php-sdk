@@ -1,0 +1,2 @@
+pet.php:10 schema "Missing" is not declared: reference a schema by its name in the contract
+pet.php:13 schema "Owner" is not declared: reference a schema by its name in the contract

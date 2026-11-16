@@ -1,0 +1,2 @@
+pets.php:16 "GET /pets/*" is provided by more than one handler: declare each method and path in one handler
+pets.php:22 "GET /pets/*" is provided by more than one handler: declare each method and path in one handler

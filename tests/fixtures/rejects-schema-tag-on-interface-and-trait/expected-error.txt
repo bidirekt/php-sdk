@@ -1,0 +1,2 @@
+shapes.php:3 "@bidirekt schema" is above interface "Shape", which cannot be a schema: put it above a class or an enum with string values
+shapes.php:8 "@bidirekt schema" is above trait "Named", which cannot be a schema: put it above a class or an enum with string values

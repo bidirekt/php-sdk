@@ -1,0 +1,5 @@
+pet.php:9 "items" is declared without type: 'array': write type: 'array' or remove "items"
+pet.php:12 "values" is declared without type: 'map': write type: 'map' or remove "values"
+pet.php:15 type: 'array' needs "items": write the type of its items, as in items: 'Pet'
+pet.php:18 type: 'map' needs "values": write the type of its values, as in values: 'Pet'
+pet.php:21 "items" cannot be 'array' alone: write ['type' => 'array', 'items' => …]

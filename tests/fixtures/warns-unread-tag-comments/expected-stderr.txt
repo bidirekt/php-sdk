@@ -1,0 +1,7 @@
+pets.php:7 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes
+pets.php:13 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes
+pets.php:15 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes
+pets.php:18 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes
+pets.php:21 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes
+pets.php:28 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes
+pets.php:37 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes

@@ -1,0 +1,2 @@
+clients.php:23 request of "POST /charges" consumed from "payments_api" is declared as "NewCharge" and "RetriedCharge": declare the same request in every handler
+clients.php:29 request of "POST /charges" consumed from "payments_api" is declared as "NewCharge" and "RetriedCharge": declare the same request in every handler

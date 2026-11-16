@@ -1,0 +1,2 @@
+pet.php:10 field "birth_date" is declared more than once in schema "Pet": give each field a distinct name
+pet.php:13 field "birth_date" is declared more than once in schema "Pet": give each field a distinct name

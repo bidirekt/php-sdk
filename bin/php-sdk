@@ -3,8 +3,14 @@
 
 declare(strict_types=1);
 
+use Bidirekt\PhpSdk\Command\GenerateCommand;
+
 require $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
 
-fwrite(STDERR, "Usage: php-sdk generate [--check] [--project <dir>] [--out <file>]\n");
+$result = GenerateCommand::runCommand(
+    array_values(array_filter(array_slice((array) ($_SERVER['argv'] ?? []), 1), 'is_string')),
+    (string) getcwd(),
+);
+fwrite(STDERR, $result->stderr);
 
-exit(1);
+exit($result->exitCode);

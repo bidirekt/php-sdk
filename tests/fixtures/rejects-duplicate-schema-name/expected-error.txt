@@ -1,0 +1,2 @@
+src/Billing/Pet.php:9 schema name "Pet" is declared more than once: give each schema a distinct name
+src/Shop/Pet.php:9 schema name "Pet" is declared more than once: give each schema a distinct name

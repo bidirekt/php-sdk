@@ -1,0 +1,1 @@
+pets.php:10 case "Sold" of enum "PetStatus" must have a string value: write a string

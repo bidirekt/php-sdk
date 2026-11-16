@@ -1,0 +1,2 @@
+pet.php:7 schema "Blank" has no field: annotate at least one field with #[BidirektField]
+pet.php:12 schema "Pet" has no field: annotate at least one field with #[BidirektField]

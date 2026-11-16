@@ -1,0 +1,5 @@
+{
+    "require": {
+        "acme/model": "^1.0"
+    }
+}

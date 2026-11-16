@@ -1,0 +1,2 @@
+clients.php:16 request of "POST /charges" consumed from "payments_api" is declared in one handler and not in another: declare the same request in every handler
+clients.php:22 request of "POST /charges" consumed from "payments_api" is declared in one handler and not in another: declare the same request in every handler

@@ -1,0 +1,5 @@
+pets.php:13 warning: "@bidirekt schema" is not above a class or an enum, so it is not read: put it above one of them
+pets.php:16 warning: "@bidirekt field" is not above a property, so it is not read: put it above a property or a promoted constructor parameter
+pets.php:24 warning: "@bidirekt schema" is not above a class or an enum, so it is not read: put it above one of them
+pets.php:27 warning: "@bidirekt field" is not above a property, so it is not read: put it above a property or a promoted constructor parameter
+pets.php:32 warning: "@bidirekt field" is not above a property, so it is not read: put it above a property or a promoted constructor parameter

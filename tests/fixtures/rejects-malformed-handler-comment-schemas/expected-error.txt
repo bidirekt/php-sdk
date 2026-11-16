@@ -1,0 +1,12 @@
+health.php:6 "@bidirekt field" in a handler's comment needs a "@bidirekt schema <name>" above it
+health.php:8 schema name "Health" is declared more than once: give each schema a distinct name
+health.php:9 field "uptime" in a handler's comment needs its type: declare it with "type=<type>"
+health.php:10 cannot read "type=HealthCheck[]" in "@bidirekt field": write type=array items=HealthCheck
+health.php:11 cannot read "@bidirekt field name=status type=string" in a handler's comment: write "@bidirekt field <name> type=<type>"
+health.php:13 cannot read "@bidirekt schema name=Probe" in a handler's comment: write "@bidirekt schema <name>"
+health.php:22 schema name "Health" is declared more than once: give each schema a distinct name
+health.php:32 schema "Instant" is not declared: reference a schema by its name in the contract
+health.php:33 schema "Sample" is not declared: reference a schema by its name in the contract
+health.php:34 cannot read "type=map<string>" in "@bidirekt field": write type=map values=string
+health.php:35 declare either "type=" or "union=" in "@bidirekt field", not both
+health.php:43 schema "Missing" is not declared: reference a schema by its name in the contract

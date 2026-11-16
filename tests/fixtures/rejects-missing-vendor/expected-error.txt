@@ -1,0 +1,1 @@
+src/Pet.php:11 cannot find class "Acme\Model\Entity" in the project, and the vendor folder is not installed: run composer install

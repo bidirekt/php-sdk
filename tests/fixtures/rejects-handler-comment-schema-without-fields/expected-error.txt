@@ -1,0 +1,3 @@
+health.php:7 schema "Health" has no field: annotate at least one field with "@bidirekt field"
+health.php:17 schema "Unused" has no field: annotate at least one field with "@bidirekt field"
+health.php:26 field "since" in a handler's comment needs its type: declare it with "type=<type>"

@@ -1,0 +1,1 @@
+pet.php:16 cannot translate enum "PetStatus", which has no values: give its cases string values

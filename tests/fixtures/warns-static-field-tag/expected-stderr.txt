@@ -1,0 +1,1 @@
+toy.php:6 warning: "@bidirekt field" is above a static property, so it is not read: put it above a property

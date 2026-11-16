@@ -1,0 +1,2 @@
+pets.php:21 response status "0200" must be written as 200
+pets.php:30 response status "0200" must be written as 200

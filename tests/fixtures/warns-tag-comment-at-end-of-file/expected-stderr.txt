@@ -1,0 +1,2 @@
+comment-only.php:3 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes
+pets.php:10 warning: this comment is not above a statement or declaration, so its "@bidirekt" tags are not read: move it above the statement or declaration, before its attributes

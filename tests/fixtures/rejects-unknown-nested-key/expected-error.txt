@@ -1,0 +1,3 @@
+pet.php:9 unknown key "item" in "items": write type, items, values, nullable or union
+pet.php:12 "values" has an entry without a key: write its keys among type, items, values, nullable and union
+pet.php:15 "nullable" must be true or false: write true, false or a class constant that holds one

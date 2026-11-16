@@ -1,0 +1,2 @@
+pets.php:17 a response has no status: write it as <status> => Pet::class
+pets.php:29 a response has no status: write it as <status> => null

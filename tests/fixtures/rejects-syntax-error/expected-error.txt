@@ -1,0 +1,2 @@
+owner.php:11 syntax error: unexpected EOF: fix the code so PHP can parse it
+pet.php:13 syntax error: unexpected ';': fix the code so PHP can parse it

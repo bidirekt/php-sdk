@@ -1,0 +1,3 @@
+pet.php:7 unknown argument "nmae" in #[BidirektSchema]: write name or fields
+pet.php:15 unknown argument "nulable" in #[BidirektField]: write name, type, items, values, optional, nullable, description or union
+pet.php:25 unknown argument "requst" in #[BidirektConsumer]: write provider, method, path, responses or request

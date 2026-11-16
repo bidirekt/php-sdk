@@ -1,0 +1,2 @@
+pet.php:8 warning: #[BidirektField] is in class "Address", which is neither a schema nor the parent of one, so it is not read: add #[BidirektSchema] to the class
+pet.php:14 warning: #[BidirektField] is in trait "Unused", which is neither a schema nor the parent of one, so it is not read: use the trait in a class with #[BidirektSchema]

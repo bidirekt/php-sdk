@@ -1,0 +1,2 @@
+payments.php:24 the "union" of #[BidirektField] lists "PixPayment", which is not in "Card | Pix": write its name in the contract, "Pix"
+payments.php:31 the "union" of #[BidirektField] lists "Boleto", which is not in "Card | Pix": remove its key or add it to the type

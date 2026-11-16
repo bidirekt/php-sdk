@@ -1,0 +1,1 @@
+src/Pet.php:13 warning: #[BidirektField] resolves to "App\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField

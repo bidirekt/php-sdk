@@ -1,0 +1,4 @@
+order.php:31 the "union" of #[BidirektField] lists "Boleto", which is not in "Card | Pix": remove its key or add it to the type
+order.php:34 the "union" of #[BidirektField] misses "Pix" of "Card | Pix": add a key for it
+order.php:37 the "union" of #[BidirektField] lists "Card" more than once: keep one key for it
+order.php:41 the "union" of #[BidirektField] misses "Pix" of "Card | Pix": add a key for it

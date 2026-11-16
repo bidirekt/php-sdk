@@ -1,0 +1,2 @@
+pet.php:10 #[BidirektField] is written more than once on "name": keep one
+pet.php:14 #[BidirektField] is written more than once on "age": keep one

@@ -1,0 +1,1 @@
+pet.php:14 "tags" has a @var "list<int>" and a @param "list<string>" that differ: keep one of them
