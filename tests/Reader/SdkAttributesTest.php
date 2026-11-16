@@ -11,7 +11,7 @@ use Bidirekt\PhpSdk\BidirektSchema;
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
-use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
+use Bidirekt\PhpSdk\Reader\ParsedFiles;
 use Bidirekt\PhpSdk\Reader\SdkAttribute;
 use Bidirekt\PhpSdk\Reader\SdkAttributes;
 use PhpParser\Node;
@@ -187,7 +187,7 @@ final class SdkAttributesTest extends TestCase
     private function parse(string $code): ParsedFile
     {
         file_put_contents($this->file, $code);
-        $parsed = (new PhpFileToParsed())->fileToParsed($this->file);
+        $parsed = (new ParsedFiles())->pathToParsed($this->file);
         self::assertInstanceOf(ParsedFile::class, $parsed);
 
         return $parsed;

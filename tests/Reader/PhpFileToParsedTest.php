@@ -15,25 +15,11 @@ use PHPUnit\Framework\TestCase;
 
 final class PhpFileToParsedTest extends TestCase
 {
-    private string $root;
-
-    protected function setUp(): void
-    {
-        $this->root = sys_get_temp_dir() . '/php-sdk-php-file-to-parsed-' . bin2hex(random_bytes(6));
-        mkdir($this->root);
-    }
-
-    protected function tearDown(): void
-    {
-        foreach (array_diff((array) scandir($this->root), ['.', '..']) as $entry) {
-            unlink($this->root . '/' . $entry);
-        }
-        rmdir($this->root);
-    }
+    private const FILE = '/project/pet.php';
 
     public function testResolvesNamesAndKeepsTheOriginal(): void
     {
-        $file = $this->write('pet.php', <<<'PHP'
+        $code = <<<'PHP'
             <?php
 
             namespace App;
@@ -41,9 +27,9 @@ final class PhpFileToParsedTest extends TestCase
             use Acme\Base as BaseModel;
 
             final class Pet extends BaseModel {}
-            PHP);
+            PHP;
 
-        $parsed = (new PhpFileToParsed())->fileToParsed($file);
+        $parsed = (new PhpFileToParsed())->codeToParsed(self::FILE, $code);
 
         self::assertInstanceOf(ParsedFile::class, $parsed);
         $class = (new NodeFinder())->findFirstInstanceOf($parsed->statements, Class_::class);
@@ -58,7 +44,7 @@ final class PhpFileToParsedTest extends TestCase
 
     public function testReadsCodeOfAnyPhpVersion(): void
     {
-        $file = $this->write('status.php', <<<'PHP'
+        $code = <<<'PHP'
             <?php
 
             enum Status: string
@@ -70,14 +56,14 @@ final class PhpFileToParsedTest extends TestCase
             {
                 public function __construct(public Status $status = new Status()) {}
             }
-            PHP);
+            PHP;
 
-        self::assertInstanceOf(ParsedFile::class, (new PhpFileToParsed())->fileToParsed($file));
+        self::assertInstanceOf(ParsedFile::class, (new PhpFileToParsed())->codeToParsed(self::FILE, $code));
     }
 
     public function testTurnsASyntaxErrorIntoAnErrorAtItsLine(): void
     {
-        $file = $this->write('pet.php', <<<'PHP'
+        $code = <<<'PHP'
             <?php
 
             final class Pet
@@ -86,36 +72,29 @@ final class PhpFileToParsedTest extends TestCase
 
                 public string $broken =;
             }
-            PHP);
+            PHP;
 
         self::assertEquals(
-            new Diagnostic("syntax error: unexpected ';': fix the code so PHP can parse it", new SourceLocation($file, 7)),
-            (new PhpFileToParsed())->fileToParsed($file),
+            new Diagnostic("syntax error: unexpected ';': fix the code so PHP can parse it", new SourceLocation(self::FILE, 7)),
+            (new PhpFileToParsed())->codeToParsed(self::FILE, $code),
         );
     }
 
     public function testTurnsAnUnclosedClassIntoAnErrorAtTheEndOfTheFile(): void
     {
-        $file = $this->write('owner.php', "<?php\n\nfinal class Owner\n{\n    public string \$name;\n");
+        $code = "<?php\n\nfinal class Owner\n{\n    public string \$name;\n";
 
         self::assertEquals(
-            new Diagnostic('syntax error: unexpected EOF: fix the code so PHP can parse it', new SourceLocation($file, 6)),
-            (new PhpFileToParsed())->fileToParsed($file),
+            new Diagnostic('syntax error: unexpected EOF: fix the code so PHP can parse it', new SourceLocation(self::FILE, 6)),
+            (new PhpFileToParsed())->codeToParsed(self::FILE, $code),
         );
     }
 
     public function testRejectsAFileItCannotRead(): void
     {
         self::assertEquals(
-            new Diagnostic('cannot read the file: check that it exists and can be read', new SourceLocation($this->root . '/missing.php', 1)),
-            (new PhpFileToParsed())->fileToParsed($this->root . '/missing.php'),
+            new Diagnostic('cannot read the file: check that it exists and can be read', new SourceLocation(__DIR__ . '/missing.php', 1)),
+            PhpFileToParsed::fileToCode(__DIR__ . '/missing.php'),
         );
-    }
-
-    private function write(string $name, string $code): string
-    {
-        file_put_contents($this->root . '/' . $name, $code);
-
-        return $this->root . '/' . $name;
     }
 }

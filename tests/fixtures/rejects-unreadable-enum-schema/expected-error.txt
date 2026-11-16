@@ -1,0 +1,2 @@
+pets.php:12 "self::PREFIX . 'sold'" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value
+pets.php:17 unknown argument "label" in #[BidirektSchema]: write name or fields

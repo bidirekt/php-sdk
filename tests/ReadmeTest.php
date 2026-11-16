@@ -23,17 +23,32 @@ final class ReadmeTest extends TestCase
 
     private const SYNTAX_ERROR = ' syntax error: ';
 
+    private string $home;
+
     private string $workspace;
 
+    private string $homeToRestore = 'HOME';
+
+    /**
+     * The workspace's parent folder is the home folder for the test, so it never reads a composer.json above it.
+     */
     protected function setUp(): void
     {
-        $this->workspace = sys_get_temp_dir() . '/php-sdk-readme-' . bin2hex(random_bytes(6));
-        mkdir($this->workspace);
+        $home = sys_get_temp_dir() . '/php-sdk-readme-' . bin2hex(random_bytes(6));
+        mkdir($home . '/project', 0777, true);
+        $this->home = (string) realpath($home);
+        $this->workspace = $this->home . '/project';
+        $previous = getenv('HOME');
+        if (is_string($previous)) {
+            $this->homeToRestore = 'HOME=' . $previous;
+        }
+        putenv('HOME=' . $this->home);
     }
 
     protected function tearDown(): void
     {
-        self::removeDirectory($this->workspace);
+        putenv($this->homeToRestore);
+        self::removeDirectory($this->home);
     }
 
     /**

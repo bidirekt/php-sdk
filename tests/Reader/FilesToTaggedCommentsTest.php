@@ -8,7 +8,7 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Reader\CommentTag;
 use Bidirekt\PhpSdk\Reader\FilesToTaggedComments;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
-use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
+use Bidirekt\PhpSdk\Reader\ParsedFiles;
 use Bidirekt\PhpSdk\Reader\TaggedComments;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt\Expression;
@@ -106,7 +106,7 @@ final class FilesToTaggedCommentsTest extends TestCase
     private function read(string $code): TaggedComments
     {
         file_put_contents($this->path, $code);
-        $file = (new PhpFileToParsed())->fileToParsed($this->path);
+        $file = (new ParsedFiles())->pathToParsed($this->path);
         self::assertInstanceOf(ParsedFile::class, $file);
 
         return FilesToTaggedComments::filesToTaggedComments([$file]);

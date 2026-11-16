@@ -49,17 +49,11 @@ final class FieldsToProperties
      */
     private function fieldToProperty(AttributeArguments $arguments, ConstantValue $field): Property|array
     {
-        $name = $arguments->stringArgument('name');
+        $name = $arguments->requiredNameArgument('name', 'new BidirektField(…) in "fields" must declare "name": write the field\'s name as its first argument');
         if ($name instanceof Diagnostic) {
             return [$name];
         }
-        if ($name === null) {
-            return [new Diagnostic('new BidirektField(…) in "fields" must declare "name": write the field\'s name as its first argument', $field->location)];
-        }
-        if ($name === '') {
-            return [new Diagnostic('"name" is empty: write the field\'s name', $arguments->values['name']->location)];
-        }
-        $options = ArgumentsToFieldOptions::argumentsToFieldOptions($arguments);
+        $options = ArgumentsToFieldOptions::argumentsToFieldOptions($arguments, $name);
         if (is_array($options)) {
             return $options;
         }

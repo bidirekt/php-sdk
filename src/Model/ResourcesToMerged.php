@@ -43,11 +43,7 @@ final class ResourcesToMerged
     public static function consumedToMerged(array $consumes): MergedResources
     {
         $resources = [];
-        /** @var array<string, Diagnostic> $errors */
         $errors = [];
-        $addError = static function (string $message, SourceLocation $location) use (&$errors): void {
-            $errors[sprintf('%s:%d %s', $location->file, $location->line, $message)] = new Diagnostic($message, $location);
-        };
         foreach (self::groupBy(
             $consumes,
             static fn(ConsumedResource $resource): string => serialize([$resource->provider, $resource->method, $resource->path]),
@@ -57,8 +53,8 @@ final class ResourcesToMerged
             foreach (array_slice($group, 1) as $other) {
                 $conflict = self::requestsToConflict($first, $other, $resource);
                 if ($conflict !== null) {
-                    $addError($conflict[0], $conflict[1]);
-                    $addError($conflict[0], $conflict[2]);
+                    $errors[] = new Diagnostic($conflict[0], $conflict[1]);
+                    $errors[] = new Diagnostic($conflict[0], $conflict[2]);
                 }
             }
             /** @var array<int, Response> $responses */
@@ -80,8 +76,8 @@ final class ResourcesToMerged
                         self::schemaToText($kept->body->schema),
                         self::schemaToText($response->body->schema),
                     );
-                    $addError($message, $kept->body->location);
-                    $addError($message, $response->body->location);
+                    $errors[] = new Diagnostic($message, $kept->body->location);
+                    $errors[] = new Diagnostic($message, $response->body->location);
                 }
             }
             $resources[] = new ConsumedResource(
@@ -94,7 +90,7 @@ final class ResourcesToMerged
             );
         }
 
-        return new MergedResources($resources, array_values($errors));
+        return new MergedResources($resources, $errors);
     }
 
     /**

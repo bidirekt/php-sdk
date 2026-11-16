@@ -24,16 +24,6 @@ final class PhpFileToParsed
         $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
     }
 
-    public function fileToParsed(string $path): ParsedFile|Diagnostic
-    {
-        $code = self::fileToCode($path);
-        if ($code instanceof Diagnostic) {
-            return $code;
-        }
-
-        return $this->codeToParsed($path, $code);
-    }
-
     /**
      * Every attribute, `use` and tag the SDK reads writes "bidirekt", so only a project file that does is read
      * whole; any other is parsed for its syntax errors and the classes it declares, read again on lookup.

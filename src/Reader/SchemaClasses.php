@@ -161,12 +161,10 @@ final class SchemaClasses
             )]];
         }
         $attribute = $attributes[0];
-        $arguments = $this->evaluator->argumentsToNamed($attribute->attribute->args, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location, $file);
-        if (is_array($arguments)) {
-            return [null, $arguments];
-        }
+        $arguments = $this->evaluator->argumentsToNamedAndErrors($attribute->attribute->args, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location, $file);
+        $errors = $arguments->errors;
         if (isset($arguments->values['fields']) && $node instanceof Enum_) {
-            return [null, [new Diagnostic(
+            return [null, [...$errors, new Diagnostic(
                 sprintf('"fields" is declared on %s, whose members are its case values: remove "fields"', $description),
                 $arguments->values['fields']->location,
             )]];
@@ -174,15 +172,15 @@ final class SchemaClasses
         if ($node instanceof Enum_) {
             $error = self::enumToUnreadable($node, '#[BidirektSchema] is on', $file->locationOf($node));
             if ($error !== null) {
-                return [null, [$error]];
+                return [null, [...$errors, $error]];
             }
         }
         $declared = $arguments->nameArgument('name');
         if ($declared instanceof Diagnostic) {
-            return [null, [$declared]];
+            return [null, [...$errors, $declared]];
         }
 
-        return [new SchemaAnnotation($declared, AnnotationForm::attribute(), $arguments->values['fields'] ?? null), []];
+        return [new SchemaAnnotation($declared, AnnotationForm::attribute(), $arguments->values['fields'] ?? null, $errors === []), $errors];
     }
 
     /**

@@ -1781,6 +1781,8 @@ schemas:
         type: string
 ```
 
+An anonymous class has no name to fall back to, so its schema needs one: `new #[BidirektSchema(name: 'Pet')] class { … }`, or `/** @bidirekt schema name=Pet */` above `class`.
+
 Every schema is written, even one no handler references. Two schemas with the same name in the contract stop `generate`, also two classes with the same short name in different namespaces; give one of them a `name`:
 
 `src/Shop/Pet.php`
@@ -3175,6 +3177,11 @@ provides:
           200: ~
 ```
 
+Other tools that read docblocks need to leave `@bidirekt` alone:
+
+- `doctrine/annotations` (Symfony annotation routing, Doctrine ORM 2, serializer or validator annotations) stops at `@bidirekt` as an annotation that "was never imported". Ignore it once in your app's bootstrap with `\Doctrine\Common\Annotations\AnnotationReader::addGlobalIgnoredName('bidirekt');`, or per class with `@IgnoreAnnotation("bidirekt")` in the class docblock.
+- PHP-CS-Fixer's `phpdoc_to_comment` rule, in the `@Symfony` and `@PhpCsFixer` sets and in Pint's `symfony` preset, turns a `/** */` above a statement, like `$app->get(...)`, into a `/* */`, which `generate` does not read. Keep it with `'phpdoc_to_comment' => ['ignored_tags' => ['bidirekt']]` in `.php-cs-fixer.php`, or the same rule config in `pint.json`.
+
 ## The `generate` command
 
 ```sh
@@ -3183,7 +3190,7 @@ vendor/bin/php-sdk generate --check
 vendor/bin/php-sdk generate --project apps/api --out apps/api/contracts/generated.yaml
 ```
 
-`generate` reads the project in the current folder and writes `contracts/generated.yaml` in it. With a `composer.json`, it reads every `.php` file of the folder except `vendor/` (or the `config.vendor-dir`), `node_modules/`, hidden folders and the paths of `autoload-dev`; without one, every `.php` file except the same folders. It reads the source code and never runs your app. It reads `vendor/` only to find a parent, a trait, an enum or a constant your annotated code uses, through Composer's class maps (`vendor/composer/autoload_psr4.php`, `autoload_namespaces.php` and `autoload_classmap.php`), from the `composer.json` closest to the project, going up as Composer does in a monorepo. It loads those maps with `require`, since they only return arrays, and never loads `vendor/autoload.php` nor the `autoload.files`, which would run code. A package installed from a Composer `path` repository is read as your code. A syntax error in a file it reads stops it.
+`generate` reads the project in the current folder and writes `contracts/generated.yaml` in it. With a `composer.json`, it reads every `.php` file of the folder except `vendor/` (or the `config.vendor-dir`), `node_modules/`, hidden folders and the paths of `autoload-dev`; without one, every `.php` file except the same folders. It reads the source code and never runs your app. It reads `vendor/` only to find a parent, a trait, an enum or a constant your annotated code uses, through Composer's class maps (`vendor/composer/autoload_psr4.php`, `autoload_namespaces.php` and `autoload_classmap.php`), from the `composer.json` closest to the project, going up as Composer does in a monorepo, but never to your home folder or above it. It loads those maps with `require`, since they only return arrays, and never loads `vendor/autoload.php` nor the `autoload.files`, which would run code. A package installed from a Composer `path` repository is read as your code. A syntax error in a file it reads stops it.
 
 - `--project <folder>` reads another project, and writes to its folder.
 - `--out <file>` writes to another file.

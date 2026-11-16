@@ -109,13 +109,8 @@ final class SdkAttributes
     {
         $warnings = [];
         foreach ((new NodeFinder())->findInstanceOf($file->statements, Attribute::class) as $attribute) {
-            $original = $attribute->name->getAttribute('originalName');
-            if (!$original instanceof Name || !$original->isUnqualified() || self::attributeToSdkName($attribute) !== null) {
-                continue;
-            }
-            $class = self::shortNameToClass($original->toString());
-            $unimported = Name::concat(NameContextVisitor::nodeToNameContext($attribute)->getNamespace(), $original);
-            if ($class === null || $unimported === null || $unimported->toLowerString() !== $attribute->name->toLowerString()) {
+            $class = self::nameToUnimportedClass($attribute->name, $attribute);
+            if ($class === null) {
                 continue;
             }
             $warnings[] = new Diagnostic(
@@ -125,6 +120,27 @@ final class SdkAttributes
         }
 
         return $warnings;
+    }
+
+    /**
+     * The SDK class a short name was written for, when it has no `use` and PHP resolves it to the
+     * current namespace instead, null for any other name.
+     *
+     * @param Node $node the node the name is written in
+     */
+    public static function nameToUnimportedClass(Name $name, Node $node): ?string
+    {
+        $original = $name->getAttribute('originalName');
+        if (!$original instanceof Name || !$original->isUnqualified() || in_array($name->toLowerString(), array_map('strtolower', self::CLASSES), true)) {
+            return null;
+        }
+        $class = self::shortNameToClass($original->toString());
+        $unimported = Name::concat(NameContextVisitor::nodeToNameContext($node)->getNamespace(), $original);
+        if ($class === null || $unimported === null || $unimported->toLowerString() !== $name->toLowerString()) {
+            return null;
+        }
+
+        return $class;
     }
 
     /**

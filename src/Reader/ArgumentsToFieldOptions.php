@@ -9,11 +9,11 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 final class ArgumentsToFieldOptions
 {
     /**
+     * @param string|Diagnostic|null $name the field's `name`, read as optional or as required by the caller
      * @return FieldOptions|list<Diagnostic>
      */
-    public static function argumentsToFieldOptions(AttributeArguments $arguments): FieldOptions|array
+    public static function argumentsToFieldOptions(AttributeArguments $arguments, string|Diagnostic|null $name): FieldOptions|array
     {
-        $name = $arguments->nameArgument('name');
         $description = $arguments->stringArgument('description');
         $optional = $arguments->boolArgument('optional');
         $nullable = $arguments->boolArgument('nullable');

@@ -65,15 +65,38 @@ final class DirectoryToProject
         return $paths;
     }
 
+    /**
+     * Goes up as Composer does, never to the home folder, the filesystem root or above.
+     */
     private static function nearestComposerFile(string $directory): ?string
     {
+        $home = self::homeDirectory();
         for ($current = $directory; ; $current = dirname($current)) {
             if (is_file($current . '/composer.json')) {
                 return $current . '/composer.json';
             }
-            if (dirname($current) === $current) {
+            $parent = dirname($current);
+            if ($parent === $current || $parent === $home || dirname($parent) === $parent) {
                 return null;
             }
         }
+    }
+
+    private static function homeDirectory(): ?string
+    {
+        foreach (['HOME', 'USERPROFILE'] as $variable) {
+            $home = getenv($variable);
+            if (!is_string($home) || $home === '') {
+                continue;
+            }
+            $real = realpath($home);
+            if ($real === false) {
+                return null;
+            }
+
+            return $real;
+        }
+
+        return null;
     }
 }

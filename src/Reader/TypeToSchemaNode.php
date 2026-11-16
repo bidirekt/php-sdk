@@ -31,6 +31,9 @@ final class TypeToSchemaNode
 {
     private const PRIMITIVES = ['string' => 'string', 'int' => 'integer', 'bool' => 'boolean', 'float' => 'number'];
 
+    /** phpDocumentor's spellings, which a native type reads as class names */
+    private const PHPDOC_PRIMITIVES = ['integer' => 'integer', 'boolean' => 'boolean', 'double' => 'number'];
+
     private const KEYWORDS = [
         'string', 'int', 'integer', 'bool', 'boolean', 'float', 'double', 'array', 'list', 'mixed', 'object',
         'iterable', 'callable', 'void', 'never', 'null', 'false', 'true', 'parent', 'resource', 'scalar', 'numeric',
@@ -114,6 +117,37 @@ final class TypeToSchemaNode
             sprintf('cannot find class "%s": declare it in the project or require its package with composer', $class),
             $location,
         )];
+    }
+
+    /**
+     * The schema a value names: a name in the contract (`'Health'`) or a class with a schema (`Pet::class`).
+     *
+     * @return RefNode|list<Diagnostic>|null null when the value names no schema
+     */
+    public function valueToRefNode(ConstantValue $value): RefNode|array|null
+    {
+        if (is_string($value->value) && $value->value !== '') {
+            return new RefNode($value->value);
+        }
+        if (!$value->value instanceof ClassReference) {
+            return null;
+        }
+        $node = $this->referenceToSchemaNode($value->value, $value->location);
+        if ($node instanceof RefNode || is_array($node)) {
+            return $node;
+        }
+
+        return null;
+    }
+
+    /**
+     * The class an `X::class` names, as classToSchemaNode() translates it.
+     *
+     * @return SchemaNode|list<Diagnostic>
+     */
+    public function referenceToSchemaNode(ClassReference $reference, SourceLocation $location): SchemaNode|array
+    {
+        return $this->classToSchemaNode($reference->class, SchemaNaming::classToShortName($reference->class), $location, AnnotationForm::attribute());
     }
 
     /**
@@ -218,8 +252,12 @@ final class TypeToSchemaNode
     private function identifierToNode(IdentifierTypeNode $identifier, string $text, TypeContext $context): SchemaNode|array
     {
         $name = strtolower($identifier->name);
-        if (isset(self::PRIMITIVES[$name])) {
-            return new PrimitiveNode(self::PRIMITIVES[$name]);
+        $primitives = self::PRIMITIVES;
+        if (!$context->written->native) {
+            $primitives += self::PHPDOC_PRIMITIVES;
+        }
+        if (isset($primitives[$name])) {
+            return new PrimitiveNode($primitives[$name]);
         }
         if ($name === 'self') {
             return $this->declarationToSchemaNode($context->scope->selfClass, $text, $context->location, $context->form);
@@ -379,11 +417,11 @@ final class TypeToSchemaNode
 
             return [new Diagnostic(sprintf('cannot translate %s, which has no values: give its cases string values', $description), $location)];
         }
-        if ($class->node instanceof Interface_) {
-            return [new Diagnostic(sprintf('cannot translate %s: use a class with %s as the type', $description, $form->schemaAnnotation), $location)];
-        }
         if ($this->classes->isVendorClass($class)) {
             return [self::untranslatable($written, $location, $form)];
+        }
+        if ($class->node instanceof Interface_) {
+            return [new Diagnostic(sprintf('cannot translate %s: use a class with %s as the type', $description, $form->schemaAnnotation), $location)];
         }
 
         return [new Diagnostic(sprintf('cannot translate %s: %s', $description, $form->addSchema), $location)];

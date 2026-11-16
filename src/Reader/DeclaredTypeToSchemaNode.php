@@ -134,7 +134,7 @@ final class DeclaredTypeToSchemaNode
     {
         $type = $value->value;
         if ($type instanceof ClassReference) {
-            return $this->types->classToSchemaNode($type->class, SchemaNaming::classToShortName($type->class), $value->location, AnnotationForm::attribute());
+            return $this->types->referenceToSchemaNode($type, $value->location);
         }
         if (!is_string($type)) {
             return [new Diagnostic(
@@ -204,14 +204,9 @@ final class DeclaredTypeToSchemaNode
      */
     private function unionMemberToNode(ConstantValue $member): RefNode|array
     {
-        if (is_string($member->value) && $member->value !== '') {
-            return new RefNode($member->value);
-        }
-        if ($member->value instanceof ClassReference) {
-            $node = $this->types->classToSchemaNode($member->value->class, SchemaNaming::classToShortName($member->value->class), $member->location, AnnotationForm::attribute());
-            if ($node instanceof RefNode || is_array($node)) {
-                return $node;
-            }
+        $node = $this->types->valueToRefNode($member);
+        if ($node !== null) {
+            return $node;
         }
 
         return [new Diagnostic(

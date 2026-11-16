@@ -9,7 +9,7 @@ use Bidirekt\PhpSdk\Model\SourceLocation;
 
 final class ProjectToFiles
 {
-    private const EXCLUDED_FOLDER_NAMES = ['vendor', 'node_modules'];
+    private const EXCLUDED_FOLDER_NAMES = ['node_modules'];
 
     /**
      * The project's `.php` files and those of the packages Composer installed from a `path` repository
@@ -19,9 +19,9 @@ final class ProjectToFiles
     {
         $warnings = [];
         $packages = self::composerToPathPackages($project->composer);
-        $excluded = $packages;
+        $excluded = [...$packages, $project->directory . '/vendor'];
         if ($project->composer !== null) {
-            array_push($excluded, $project->composer->vendorDirectory, ...$project->composer->devPaths);
+            $excluded = [...$packages, $project->composer->vendorDirectory, ...$project->composer->devPaths];
         }
         $files = self::directoryToPhpFiles($project->directory, self::pathsToReal($excluded), $warnings);
         foreach ($packages as $package) {
@@ -67,6 +67,10 @@ final class ProjectToFiles
             return [];
         }
         $visited[$real] = true;
+        $nestedVendor = self::directoryToVendor($directory);
+        if ($nestedVendor !== null) {
+            array_push($excluded, ...self::pathsToReal([$nestedVendor]));
+        }
         $entries = @scandir($directory);
         if ($entries === false) {
             $warnings[] = new Diagnostic('cannot read the folder, so its files are not read: check that it can be read', new SourceLocation($directory));
@@ -96,6 +100,22 @@ final class ProjectToFiles
         }
 
         return $files;
+    }
+
+    /**
+     * The vendor folder of the `composer.json` in the folder, which installs its own packages there.
+     */
+    private static function directoryToVendor(string $directory): ?string
+    {
+        if (!is_file($directory . '/composer.json')) {
+            return null;
+        }
+        $composer = DirectoryToProject::composerFileToComposer($directory . '/composer.json');
+        if ($composer instanceof Composer) {
+            return $composer->vendorDirectory;
+        }
+
+        return $directory . '/vendor';
     }
 
     /**

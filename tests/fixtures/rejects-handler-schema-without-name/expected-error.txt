@@ -1,2 +1,2 @@
 health.php:10 #[BidirektSchema] on a method or function must declare "name": write #[BidirektSchema(name: '<name>', fields: [new BidirektField('<field>', type: …)])]
-health.php:14 "name" is empty: write the schema's name
+health.php:14 "name" is empty: write a name

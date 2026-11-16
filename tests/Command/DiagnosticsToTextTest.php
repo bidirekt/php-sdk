@@ -40,6 +40,33 @@ final class DiagnosticsToTextTest extends TestCase
         );
     }
 
+    public function testPrintsADiagnosticReachedMoreThanOnceOnce(): void
+    {
+        $text = DiagnosticsToText::diagnosticsToText(
+            [
+                new Diagnostic('schema "Ownr" is not declared', new SourceLocation('/app/pets.php', 11)),
+                new Diagnostic('schema "Ownr" is not declared', new SourceLocation('/app/pets.php', 11)),
+                new Diagnostic('schema "Ownr" is not declared', new SourceLocation('/app/owners.php', 11)),
+                new Diagnostic('schema "Ownr" is not declared', new SourceLocation('/app/pets.php', 12)),
+            ],
+            [
+                new Diagnostic('a warning', new SourceLocation('/app/pets.php', 3)),
+                new Diagnostic('a warning', new SourceLocation('/app/pets.php', 3)),
+                new Diagnostic('schema "Ownr" is not declared', new SourceLocation('/app/pets.php', 11)),
+            ],
+            '/app',
+        );
+
+        self::assertSame(
+            "owners.php:11 schema \"Ownr\" is not declared\n"
+            . "pets.php:3 warning: a warning\n"
+            . "pets.php:11 schema \"Ownr\" is not declared\n"
+            . "pets.php:11 warning: schema \"Ownr\" is not declared\n"
+            . "pets.php:12 schema \"Ownr\" is not declared\n",
+            $text,
+        );
+    }
+
     public function testIsEmptyWithoutDiagnostics(): void
     {
         self::assertSame('', DiagnosticsToText::diagnosticsToText([], [], '/app'));

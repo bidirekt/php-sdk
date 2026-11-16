@@ -15,7 +15,6 @@ use Bidirekt\PhpSdk\Reader\ConstantValue;
 use Bidirekt\PhpSdk\Reader\FieldConstruction;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
 use Bidirekt\PhpSdk\Reader\ParsedFiles;
-use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
 use PhpParser\Node\Attribute;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\TestCase;
@@ -153,12 +152,12 @@ final class ConstantExpressionToValueTest extends TestCase
      */
     private function evaluate(ParsedFile $file): AttributeArguments|array
     {
-        $parser = new PhpFileToParsed();
-        $classes = new ClassIndex(new ParsedFiles(), null);
+        $files = new ParsedFiles();
+        $classes = new ClassIndex($files, null);
         $classes->addParsedFile($file);
         foreach (['Codes.php', 'Loop.php'] as $other) {
             if (is_file($this->root . '/' . $other)) {
-                $parsed = $parser->fileToParsed($this->root . '/' . $other);
+                $parsed = $files->pathToParsed($this->root . '/' . $other);
                 self::assertInstanceOf(ParsedFile::class, $parsed);
                 $classes->addParsedFile($parsed);
             }
@@ -173,7 +172,7 @@ final class ConstantExpressionToValueTest extends TestCase
     private function parse(string $name, string $code): ParsedFile
     {
         $this->write($name, $code);
-        $parsed = (new PhpFileToParsed())->fileToParsed($this->root . '/' . $name);
+        $parsed = (new ParsedFiles())->pathToParsed($this->root . '/' . $name);
         self::assertInstanceOf(ParsedFile::class, $parsed);
 
         return $parsed;

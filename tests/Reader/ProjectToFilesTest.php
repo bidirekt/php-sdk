@@ -14,18 +14,35 @@ use PHPUnit\Framework\TestCase;
 
 final class ProjectToFilesTest extends TestCase
 {
+    private string $home;
+
     private string $root;
 
+    private string $homeToRestore = 'HOME';
+
+    /**
+     * The project's parent folder is the home folder for the test, so it never reads a composer.json above it.
+     */
     protected function setUp(): void
     {
-        $this->root = sys_get_temp_dir() . '/php-sdk-project-to-files-' . bin2hex(random_bytes(6));
-        mkdir($this->root);
-        $this->root = (string) realpath($this->root);
+        $home = sys_get_temp_dir() . '/php-sdk-project-to-files-' . bin2hex(random_bytes(6));
+        mkdir($home . '/project', 0777, true);
+        $this->home = (string) realpath($home);
+        $this->root = $this->home . '/project';
+        $previous = getenv('HOME');
+        if (is_string($previous)) {
+            $this->homeToRestore = 'HOME=' . $previous;
+        }
+        putenv('HOME=' . $this->home);
     }
 
     protected function tearDown(): void
     {
-        self::removeDirectory($this->root);
+        if (is_dir($this->root . '/locked')) {
+            chmod($this->root . '/locked', 0755);
+        }
+        putenv($this->homeToRestore);
+        self::removeDirectory($this->home);
     }
 
     private static function removeDirectory(string $directory): void
@@ -68,6 +85,29 @@ final class ProjectToFilesTest extends TestCase
         $this->write('src/Pet.php', '<?php');
 
         self::assertSame(['deps/own.php', 'src/Pet.php'], $this->filesOf($this->root));
+    }
+
+    public function testReadsAFolderNamedVendorThatNoComposerJsonInstallsInto(): void
+    {
+        $this->write('composer.json', '{"config": {"vendor-dir": "lib"}}');
+        $this->write('lib/acme/Base.php', '<?php');
+        $this->write('vendor/Legacy.php', '<?php');
+        $this->write('src/Marketplace/vendor/Seller.php', '<?php');
+
+        self::assertSame(['src/Marketplace/vendor/Seller.php', 'vendor/Legacy.php'], $this->filesOf($this->root));
+    }
+
+    public function testSkipsTheVendorFolderOfANestedComposerJson(): void
+    {
+        $this->write('composer.json', '{}');
+        $this->write('tools/legacy/composer.json', '{}');
+        $this->write('tools/legacy/vendor/acme/Base.php', '<?php');
+        $this->write('tools/legacy/src/Tool.php', '<?php');
+        $this->write('tools/modern/composer.json', '{"config": {"vendor-dir": "deps"}}');
+        $this->write('tools/modern/deps/acme/Base.php', '<?php');
+        $this->write('tools/modern/vendor/Own.php', '<?php');
+
+        self::assertSame(['tools/legacy/src/Tool.php', 'tools/modern/vendor/Own.php'], $this->filesOf($this->root));
     }
 
     public function testReadsEveryPhpFileOutsideTheExcludedFoldersWithoutComposerJson(): void
@@ -184,14 +224,12 @@ final class ProjectToFilesTest extends TestCase
         $this->write('locked/Owner.php', '<?php');
         chmod($this->root . '/locked', 0);
         if (is_readable($this->root . '/locked')) {
-            chmod($this->root . '/locked', 0755);
             self::markTestSkipped('the folder stays readable: run the tests as a user other than root');
         }
         $project = DirectoryToProject::directoryToProject($this->root);
         self::assertInstanceOf(Project::class, $project);
 
         $files = ProjectToFiles::projectToFiles($project);
-        chmod($this->root . '/locked', 0755);
 
         self::assertSame([$this->root . '/src/Pet.php'], $files->paths);
         self::assertEquals([

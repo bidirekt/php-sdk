@@ -63,22 +63,6 @@ final class ProjectToContract
         );
         $errors = [...$tagged->errors, ...$schemaTags->errors, ...$schemas->errors, ...$handlers->errors, ...$tagHandlers->errors];
 
-        return new ReadResult($contract, self::diagnosticsToUnique($errors), self::diagnosticsToUnique($warnings));
-    }
-
-    /**
-     * A diagnostic the readers reach more than once, like an enum's from a field and from a handler, is reported once.
-     *
-     * @param list<Diagnostic> $diagnostics
-     * @return list<Diagnostic>
-     */
-    private static function diagnosticsToUnique(array $diagnostics): array
-    {
-        $unique = [];
-        foreach ($diagnostics as $diagnostic) {
-            $unique[sprintf('%s:%d %s', $diagnostic->location->file ?? '', $diagnostic->location->line ?? 0, $diagnostic->message)] = $diagnostic;
-        }
-
-        return array_values($unique);
+        return new ReadResult($contract, $errors, $warnings);
     }
 }

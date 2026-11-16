@@ -13,14 +13,25 @@ final class FixturesTest extends TestCase
 
     private string $workspace;
 
+    private string $homeToRestore = 'HOME';
+
+    /**
+     * The workspace is the home folder for the run, so a case never reads a composer.json above it.
+     */
     protected function setUp(): void
     {
         $this->workspace = sys_get_temp_dir() . '/php-sdk-fixtures-' . bin2hex(random_bytes(6));
         mkdir($this->workspace);
+        $home = getenv('HOME');
+        if (is_string($home)) {
+            $this->homeToRestore = 'HOME=' . $home;
+        }
+        putenv('HOME=' . $this->workspace);
     }
 
     protected function tearDown(): void
     {
+        putenv($this->homeToRestore);
         self::removeDirectory($this->workspace);
     }
 

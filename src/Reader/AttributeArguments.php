@@ -13,12 +13,14 @@ use Bidirekt\PhpSdk\Model\SourceLocation;
 final class AttributeArguments
 {
     /**
-     * @param array<string, ConstantValue> $values parameter name => value, only the arguments written
+     * @param array<string, ConstantValue> $values parameter name => value, only the arguments written and read
      * @param SourceLocation $location the attribute's
+     * @param list<Diagnostic> $errors why the other arguments written cannot be read
      */
     public function __construct(
         public array $values,
         public SourceLocation $location,
+        public array $errors = [],
     ) {}
 
     public function stringArgument(string $name): string|Diagnostic|null
@@ -39,12 +41,27 @@ final class AttributeArguments
 
     public function nameArgument(string $name): string|Diagnostic|null
     {
+        return $this->nonEmptyArgument($name, sprintf('write a name or leave "%s" out', $name));
+    }
+
+    /**
+     * @param string $missing the message when the argument is not written
+     */
+    public function requiredNameArgument(string $name, string $missing): string|Diagnostic
+    {
+        $value = $this->nonEmptyArgument($name, 'write a name');
+        if ($value === null) {
+            return new Diagnostic($missing, $this->location);
+        }
+
+        return $value;
+    }
+
+    private function nonEmptyArgument(string $name, string $fix): string|Diagnostic|null
+    {
         $value = $this->stringArgument($name);
         if ($value === '') {
-            return new Diagnostic(
-                sprintf('"%s" is empty: write a name or leave "%s" out', $name, $name),
-                $this->values[$name]->location,
-            );
+            return new Diagnostic(sprintf('"%s" is empty: %s', $name, $fix), $this->values[$name]->location);
         }
 
         return $value;

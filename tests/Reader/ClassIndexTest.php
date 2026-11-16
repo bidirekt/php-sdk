@@ -18,18 +18,32 @@ final class ClassIndexTest extends TestCase
 {
     private const VENDOR_HEADER = "<?php\n\$vendorDir = dirname(__DIR__);\n\$baseDir = dirname(\$vendorDir);\n\n";
 
+    private string $home;
+
     private string $root;
 
+    private string $homeToRestore = 'HOME';
+
+    /**
+     * The project's parent folder is the home folder for the test, so it never reads a composer.json above it.
+     */
     protected function setUp(): void
     {
-        $this->root = sys_get_temp_dir() . '/php-sdk-class-index-' . bin2hex(random_bytes(6));
-        mkdir($this->root);
-        $this->root = (string) realpath($this->root);
+        $home = sys_get_temp_dir() . '/php-sdk-class-index-' . bin2hex(random_bytes(6));
+        mkdir($home . '/project', 0777, true);
+        $this->home = (string) realpath($home);
+        $this->root = $this->home . '/project';
+        $previous = getenv('HOME');
+        if (is_string($previous)) {
+            $this->homeToRestore = 'HOME=' . $previous;
+        }
+        putenv('HOME=' . $this->home);
     }
 
     protected function tearDown(): void
     {
-        self::removeDirectory($this->root);
+        putenv($this->homeToRestore);
+        self::removeDirectory($this->home);
     }
 
     public function testFindsEveryClassLikeOfTheProjectByItsCaseInsensitiveName(): void

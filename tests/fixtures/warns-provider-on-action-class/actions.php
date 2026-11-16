@@ -29,7 +29,6 @@ final class ShowPetAction
     #[BidirektSchema(name: 'Show')]
     public string $show;
 
-    #[BidirektField]
     public function __invoke(): void {}
 }
 

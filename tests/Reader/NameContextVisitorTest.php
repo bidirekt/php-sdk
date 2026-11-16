@@ -6,7 +6,7 @@ namespace Bidirekt\PhpSdk\Tests\Reader;
 
 use Bidirekt\PhpSdk\Reader\NameContextVisitor;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
-use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
+use Bidirekt\PhpSdk\Reader\ParsedFiles;
 use PhpParser\NameContext;
 use PhpParser\Node\Stmt\Property;
 use PhpParser\NodeFinder;
@@ -131,7 +131,7 @@ final class NameContextVisitorTest extends TestCase
     private function parse(string $code): ParsedFile
     {
         file_put_contents($this->file, $code);
-        $parsed = (new PhpFileToParsed())->fileToParsed($this->file);
+        $parsed = (new ParsedFiles())->pathToParsed($this->file);
         self::assertInstanceOf(ParsedFile::class, $parsed);
 
         return $parsed;

@@ -1,0 +1,1 @@
+health.php:10 "'Up ' . 'or down'" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value

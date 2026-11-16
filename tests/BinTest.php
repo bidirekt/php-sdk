@@ -30,8 +30,9 @@ final class BinTest extends TestCase
         if (!extension_loaded('xdebug')) {
             self::markTestSkipped('Xdebug is not loaded');
         }
-        $project = sys_get_temp_dir() . '/php-sdk-bin-' . bin2hex(random_bytes(6));
-        mkdir($project);
+        $home = sys_get_temp_dir() . '/php-sdk-bin-' . bin2hex(random_bytes(6));
+        $project = $home . '/project';
+        mkdir($project, 0777, true);
         file_put_contents($project . '/deep.php', '<?php $sum = ' . str_repeat('(', 600) . '1' . str_repeat(' + 1)', 600) . ";\n");
         file_put_contents($project . '/Pet.php', <<<'PHP'
             <?php
@@ -48,6 +49,8 @@ final class BinTest extends TestCase
             [1 => ['file', $project . '/stdout.txt', 'w'], 2 => ['file', $project . '/stderr.txt', 'w']],
             $pipes,
             $project,
+            // The project's parent folder is its home folder, so it never reads a composer.json above it.
+            ['HOME' => (string) realpath($home)] + getenv(),
         );
         self::assertIsResource($process);
 
@@ -59,6 +62,7 @@ final class BinTest extends TestCase
         }
         @rmdir($project . '/contracts');
         rmdir($project);
+        rmdir($home);
 
         self::assertSame('', $output);
         self::assertSame(0, $exitCode);

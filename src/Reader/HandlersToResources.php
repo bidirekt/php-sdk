@@ -14,7 +14,6 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\NamedSchema;
 use Bidirekt\PhpSdk\Model\ObjectNode;
 use Bidirekt\PhpSdk\Model\ProvidedResource;
-use Bidirekt\PhpSdk\Model\RefNode;
 use Bidirekt\PhpSdk\Model\Response;
 use Bidirekt\PhpSdk\Model\SchemaNames;
 use Bidirekt\PhpSdk\Model\SourceLocation;
@@ -116,27 +115,22 @@ final class HandlersToResources
      */
     private function attributeToSchema(SdkAttribute $attribute, ParsedFile $file): array
     {
-        $arguments = $this->evaluator->argumentsToNamed($attribute->attribute->args, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location, $file);
-        if (is_array($arguments)) {
-            return [null, $arguments];
+        $arguments = $this->evaluator->argumentsToNamedAndErrors($attribute->attribute->args, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location, $file);
+        $errors = $arguments->errors;
+        if ($errors !== [] && !isset($arguments->values['name'])) {
+            return [null, $errors];
         }
-        $name = $arguments->stringArgument('name');
+        $name = $arguments->requiredNameArgument(
+            'name',
+            '#[BidirektSchema] on a method or function must declare "name": write #[BidirektSchema(name: \'<name>\', fields: [new BidirektField(\'<field>\', type: …)])]',
+        );
         if ($name instanceof Diagnostic) {
-            return [null, [$name]];
-        }
-        if ($name === null) {
-            return [null, [new Diagnostic(
-                '#[BidirektSchema] on a method or function must declare "name": write #[BidirektSchema(name: \'<name>\', fields: [new BidirektField(\'<field>\', type: …)])]',
-                $attribute->location,
-            )]];
-        }
-        if ($name === '') {
-            return [null, [new Diagnostic('"name" is empty: write the schema\'s name', $arguments->values['name']->location)]];
+            return [null, [...$errors, $name]];
         }
         $properties = [];
-        $errors = [];
         if (isset($arguments->values['fields'])) {
-            [$properties, $errors] = $this->declaredFields->fieldsToProperties($arguments->values['fields']);
+            [$properties, $fieldErrors] = $this->declaredFields->fieldsToProperties($arguments->values['fields']);
+            array_push($errors, ...$fieldErrors);
         }
         if ($properties === [] && $errors === []) {
             $errors[] = new Diagnostic(sprintf('schema "%s" has no field: declare at least one field in "fields"', $name), $attribute->location);
@@ -301,7 +295,7 @@ final class HandlersToResources
         if ($value->value instanceof ConstantArray) {
             return $this->listToHandlerBody($value, $value->value);
         }
-        $schema = $this->valueToSchema($value);
+        $schema = $this->types->valueToRefNode($value);
         if ($schema === null) {
             return [self::unreadableBody($value)];
         }
@@ -309,7 +303,7 @@ final class HandlersToResources
             return $schema;
         }
 
-        return new HandlerBody(new Body($schema, $value->location), null);
+        return new HandlerBody(new Body($schema->schema, $value->location), null);
     }
 
     /**
@@ -321,7 +315,7 @@ final class HandlersToResources
         if ($options === null) {
             return [self::unreadableBody($value)];
         }
-        $items = $this->valueToSchema($options['list']);
+        $items = $this->types->valueToRefNode($options['list']);
         if ($items === null) {
             return [new Diagnostic(
                 sprintf('cannot read %s as the items of a list: write a class with #[BidirektSchema], such as Pet::class, or a schema name', $options['list']->valueToText()),
@@ -331,14 +325,11 @@ final class HandlersToResources
         if (is_array($items)) {
             return $items;
         }
-        $name = $options['name'] ?? null;
-        if ($name !== null && !is_string($name->value)) {
-            return [self::unreadableBody($value)];
+        $name = (new AttributeArguments($options, $value->location))->nameArgument('name');
+        if ($name instanceof Diagnostic) {
+            return [$name];
         }
-        if ($name !== null && $name->value === '') {
-            return [new Diagnostic('"name" is empty: write a name or leave "name" out', $name->location)];
-        }
-        $list = SchemaNames::listToNamedSchema($items, $name->value ?? null, $value->location);
+        $list = SchemaNames::listToNamedSchema($items->schema, $name, $value->location);
 
         return new HandlerBody(new Body($list->name, $value->location), $list);
     }
@@ -366,29 +357,6 @@ final class HandlersToResources
         }
 
         return $options;
-    }
-
-    /**
-     * The schema a body names: the schema of a class (`Pet::class`) or a name in the contract (`'Health'`).
-     *
-     * @return string|list<Diagnostic>|null null when the value names no schema
-     */
-    private function valueToSchema(ConstantValue $value): string|array|null
-    {
-        if (is_string($value->value) && $value->value !== '') {
-            return $value->value;
-        }
-        if ($value->value instanceof ClassReference) {
-            $node = $this->types->classToSchemaNode($value->value->class, SchemaNaming::classToShortName($value->value->class), $value->location, AnnotationForm::attribute());
-            if (is_array($node)) {
-                return $node;
-            }
-            if ($node instanceof RefNode) {
-                return $node->schema;
-            }
-        }
-
-        return null;
     }
 
     private static function unreadableBody(ConstantValue $value): Diagnostic

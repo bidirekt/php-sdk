@@ -52,9 +52,6 @@ final class FieldToSchemaNode
     public function declaredToSchemaNode(FieldSource $field, ?SchemaNode $declared, ClassDeclaration $owner, ClassScope $scope, SourceLocation $location, AnnotationForm $form): SchemaNode|array
     {
         $doc = $this->fieldToDocType($field, $location);
-        if ($doc instanceof Diagnostic) {
-            return [$doc];
-        }
         $native = null;
         if ($field->nativeType !== null) {
             $text = $owner->file->textOf($field->nativeType);
@@ -63,17 +60,25 @@ final class FieldToSchemaNode
                 return [new Diagnostic(sprintf('cannot translate "%s" to a contract type: declare it with %s', $text, $form->declareType), $location)];
             }
         }
-        $flags = $native ?? $doc;
         if ($declared !== null && !$declared instanceof UnionNode) {
+            $flags = $native;
+            if ($flags === null && $doc instanceof WrittenType) {
+                $flags = $doc;
+            }
             $declared->nullable = $flags !== null && TypeToSchemaNode::isNullable($flags->node);
 
             return $declared;
         }
-        $written = $flags;
+        $written = $native;
         $arrayNative = null;
-        if ($native !== null && $doc !== null && self::isArray($native)) {
-            $written = $doc;
-            $arrayNative = $native;
+        if ($native === null || self::isArray($native)) {
+            if ($doc instanceof Diagnostic) {
+                return [$doc];
+            }
+            if ($doc !== null) {
+                $written = $doc;
+                $arrayNative = $native;
+            }
         }
         if ($written === null) {
             if ($declared !== null) {

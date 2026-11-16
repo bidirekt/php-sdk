@@ -12,18 +12,29 @@ use PHPUnit\Framework\TestCase;
 
 final class DirectoryToProjectTest extends TestCase
 {
+    private string $base;
+
     private string $root;
+
+    private string $homeToRestore = 'HOME';
 
     protected function setUp(): void
     {
-        $this->root = sys_get_temp_dir() . '/php-sdk-directory-to-project-' . bin2hex(random_bytes(6));
-        mkdir($this->root);
-        $this->root = (string) realpath($this->root);
+        $base = sys_get_temp_dir() . '/php-sdk-directory-to-project-' . bin2hex(random_bytes(6));
+        mkdir($base . '/home/project', 0777, true);
+        $this->base = (string) realpath($base);
+        $this->root = $this->base . '/home/project';
+        $home = getenv('HOME');
+        if (is_string($home)) {
+            $this->homeToRestore = 'HOME=' . $home;
+        }
+        putenv('HOME=' . $this->base . '/home');
     }
 
     protected function tearDown(): void
     {
-        self::removeDirectory($this->root);
+        putenv($this->homeToRestore);
+        self::removeDirectory($this->base);
     }
 
     public function testTakesTheVendorAndAutoloadDevFromTheComposerJsonInTheFolder(): void
@@ -60,6 +71,16 @@ final class DirectoryToProjectTest extends TestCase
         $project = DirectoryToProject::directoryToProject($this->root . '/apps/api');
 
         self::assertEquals(new Project($this->root . '/apps/api', new Composer($this->root . '/vendor', [])), $project);
+    }
+
+    public function testDoesNotLookAtTheHomeFolderNorAboveIt(): void
+    {
+        file_put_contents($this->base . '/composer.json', '{}');
+        file_put_contents($this->base . '/home/composer.json', '{}');
+
+        $project = DirectoryToProject::directoryToProject($this->root);
+
+        self::assertEquals(new Project($this->root, null), $project);
     }
 
     public function testHasNoComposerContextWithoutComposerJson(): void

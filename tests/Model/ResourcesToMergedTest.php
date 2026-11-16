@@ -92,24 +92,6 @@ final class ResourcesToMergedTest extends TestCase
         );
     }
 
-    public function testReportsAConflictRepeatedAtTheSamePlaceOnce(): void
-    {
-        $merged = ResourcesToMerged::consumedToMerged([
-            self::charges(1, [self::response(201, 'Charge', 2)]),
-            self::charges(10, [self::response(201, null, 11)]),
-            self::charges(20, [self::response(201, null, 11)]),
-        ]);
-
-        $message = 'response 201 of "POST /charges" consumed from "payments_api" is declared as "Charge" and null: declare one schema with every field the service reads';
-        self::assertEquals(
-            [
-                new Diagnostic($message, new SourceLocation(self::CLIENT, 2)),
-                new Diagnostic($message, new SourceLocation(self::CLIENT, 11)),
-            ],
-            $merged->errors,
-        );
-    }
-
     public function testRejectsTheSameMethodAndPathInTwoHandlersAtBothPlaces(): void
     {
         $merged = ResourcesToMerged::providedToMerged([self::pets(1), self::pets(10)]);

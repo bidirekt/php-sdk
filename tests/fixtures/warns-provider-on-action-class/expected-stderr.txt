@@ -4,6 +4,5 @@ actions.php:19 warning: #[BidirektConsumer] is on a constant, so it is not read:
 actions.php:23 warning: #[BidirektProvider] is on a parameter, so it is not read: put it on a method, a function or a closure
 actions.php:25 warning: #[BidirektSchema] is on a parameter, so it is not read: put it on a class, an enum, a method or a function
 actions.php:29 warning: #[BidirektSchema] is on a property, so it is not read: put it on a class, an enum, a method or a function
-actions.php:32 warning: #[BidirektField] is on a method, so it is not read: put it on a property or a promoted constructor parameter
-actions.php:36 warning: #[BidirektField] is on an enum, so it is not read: put it on a property or a promoted constructor parameter
-actions.php:39 warning: #[BidirektProvider] is on an enum case, so it is not read: put it on a method, a function or a closure
+actions.php:35 warning: #[BidirektField] is on an enum, so it is not read: put it on a property or a promoted constructor parameter
+actions.php:38 warning: #[BidirektProvider] is on an enum case, so it is not read: put it on a method, a function or a closure

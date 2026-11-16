@@ -73,6 +73,22 @@ final class ConstantExpressionToValue
      */
     public function argumentsToNamed(array $arguments, array $parameters, string $what, SourceLocation $location, ParsedFile $file): AttributeArguments|array
     {
+        $named = $this->argumentsToNamedAndErrors($arguments, $parameters, $what, $location, $file);
+        if ($named->errors !== []) {
+            return $named->errors;
+        }
+
+        return $named;
+    }
+
+    /**
+     * Like argumentsToNamed(), keeping the arguments that can be read beside the errors of the others.
+     *
+     * @param array<Node> $arguments
+     * @param list<string> $parameters
+     */
+    public function argumentsToNamedAndErrors(array $arguments, array $parameters, string $what, SourceLocation $location, ParsedFile $file): AttributeArguments
+    {
         return $this->argumentsToNamedResolving($arguments, $parameters, $what, $location, $file, []);
     }
 
@@ -80,9 +96,8 @@ final class ConstantExpressionToValue
      * @param array<Node> $arguments
      * @param list<string> $parameters
      * @param array<string, true> $resolving the constants being evaluated, to stop at one that refers to itself
-     * @return AttributeArguments|list<Diagnostic>
      */
-    private function argumentsToNamedResolving(array $arguments, array $parameters, string $what, SourceLocation $location, ParsedFile $file, array $resolving): AttributeArguments|array
+    private function argumentsToNamedResolving(array $arguments, array $parameters, string $what, SourceLocation $location, ParsedFile $file, array $resolving): AttributeArguments
     {
         $values = [];
         $errors = [];
@@ -116,11 +131,8 @@ final class ConstantExpressionToValue
             }
             $values[$name] = $value;
         }
-        if ($errors !== []) {
-            return $errors;
-        }
 
-        return new AttributeArguments($values, $location);
+        return new AttributeArguments($values, $location, $errors);
     }
 
     /**
@@ -182,11 +194,17 @@ final class ConstantExpressionToValue
         }
         if ($expression instanceof New_ && $expression->class instanceof Name && strtolower($expression->class->toString()) === strtolower(BidirektField::class)) {
             $arguments = $this->argumentsToNamedResolving($expression->args, SdkAttributes::classToParameters(BidirektField::class), 'new BidirektField(…)', $location, $file, $resolving);
-            if (is_array($arguments)) {
-                return $arguments;
+            if ($arguments->errors !== []) {
+                return $arguments->errors;
             }
 
             return new ConstantValue(new FieldConstruction($arguments), $location);
+        }
+        if ($expression instanceof New_ && $expression->class instanceof Name && SdkAttributes::nameToUnimportedClass($expression->class, $expression) === BidirektField::class) {
+            return [new Diagnostic(
+                sprintf('new BidirektField(…) resolves to "%s", so it is not read: write use %s', $expression->class->toString(), BidirektField::class),
+                $location,
+            )];
         }
 
         return [self::unreadable($expression, $file)];

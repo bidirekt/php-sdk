@@ -10,7 +10,8 @@ final class DiagnosticsToText
 {
     /**
      * One line per diagnostic, `<file>[:<line>] [warning: ]<message>`, errors and warnings sorted together by
-     * file (byte order) and line, with the file relative to the cwd.
+     * file (byte order) and line, with the file relative to the cwd. A diagnostic reached more than once, like
+     * an enum's from a field and from a handler, is printed once.
      *
      * @param list<Diagnostic> $errors
      * @param list<Diagnostic> $warnings
@@ -25,12 +26,12 @@ final class DiagnosticsToText
             $prefixed[] = [$warning, 'warning: '];
         }
         usort($prefixed, static fn(array $a, array $b): int => self::compareDiagnostics($a[0], $b[0]));
-        $text = '';
+        $lines = [];
         foreach ($prefixed as [$diagnostic, $prefix]) {
-            $text .= self::diagnosticToLine($diagnostic, $prefix, $cwd);
+            $lines[] = self::diagnosticToLine($diagnostic, $prefix, $cwd);
         }
 
-        return $text;
+        return implode('', array_unique($lines));
     }
 
     public static function diagnosticToLine(Diagnostic $diagnostic, string $prefix, string $cwd): string

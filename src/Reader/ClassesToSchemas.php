@@ -49,7 +49,7 @@ final class ClassesToSchemas
     /** @var list<NamedSchema> the classes whose schema annotation has errors */
     private array $unreadSchemas = [];
 
-    /** @var array<string, Property|null> member node key, with the scope keys when it writes self or static => its property, null when it cannot be read */
+    /** @var array<string, Property|null> member node key, with the scope keys when it writes self, static or parent => its property, null when it cannot be read */
     private array $properties = [];
 
     private function __construct(
@@ -117,8 +117,8 @@ final class ClassesToSchemas
         $this->readClasses[$file->nodeToKey($node)] = true;
         [$annotation, $errors] = $read;
         $this->addErrors($errors);
-        if ($annotation === null) {
-            $this->addUnreadClass($node, $file);
+        if ($annotation === null || !$annotation->readable) {
+            $this->addUnreadClass($node, $file, $annotation?->declaredName);
 
             return null;
         }
@@ -143,6 +143,7 @@ final class ClassesToSchemas
             $schema = $this->schemas->enumToSchema($declaration);
             if (is_array($schema)) {
                 $this->addErrors($schema);
+                $this->addUnreadClass($node, $file, $declared);
             }
 
             return null;
@@ -153,15 +154,17 @@ final class ClassesToSchemas
     }
 
     /**
-     * A class whose schema annotation has errors is still declared under its class name, so the references
-     * to it resolve and add no error of their own.
+     * A class or enum whose schema cannot be read is still declared under its name, with no field, so the
+     * references to it resolve and add no error of their own.
+     *
+     * @param string|null $declared the name its annotation declares, when that could be read
      */
-    private function addUnreadClass(ClassLike $node, ParsedFile $file): void
+    private function addUnreadClass(ClassLike $node, ParsedFile $file, ?string $declared): void
     {
-        if (!$node instanceof Class_ || $node->namespacedName === null) {
+        if ((!$node instanceof Class_ && !$node instanceof Enum_) || $node->namespacedName === null) {
             return;
         }
-        $name = SchemaNaming::classToShortName($node->namespacedName->toString());
+        $name = SchemaNaming::schemaToName($declared, $node->namespacedName->toString());
         $this->schemas->addClass($file, $node, $name);
         $this->unreadSchemas[] = new NamedSchema($name, new ObjectNode([]), $file->locationOf($node));
     }
@@ -366,7 +369,7 @@ final class ClassesToSchemas
         $owner = $annotated->owner;
         $scope = $annotated->scope;
         $key = $owner->file->nodeToKey($annotated->member);
-        if (self::mentionsSelfOrStatic($annotated->member, $annotated->declaration, $owner->file)) {
+        if (self::mentionsSpecialClass($annotated->member, $annotated->declaration, $owner->file)) {
             $key .= sprintf(
                 '|%s|%s',
                 $scope->selfClass->file->nodeToKey($scope->selfClass->node),
@@ -381,17 +384,17 @@ final class ClassesToSchemas
     }
 
     /**
-     * Whether the member's type, docblocks or attributes write `self` or `static`, which name another class
-     * for each schema that reads it.
+     * Whether the member's type, docblocks or attributes write `self`, `static` or `parent`, which name another
+     * class for each schema that reads it.
      */
-    private static function mentionsSelfOrStatic(PropertyItem|Param $member, Stmt\Property|ClassMethod $declaration, ParsedFile $file): bool
+    private static function mentionsSpecialClass(PropertyItem|Param $member, Stmt\Property|ClassMethod $declaration, ParsedFile $file): bool
     {
         $written = $file->textOf($declaration) . $declaration->getDocComment()?->getText();
         if ($member instanceof Param) {
             $written = $file->textOf($member) . $member->getDocComment()?->getText() . $declaration->getDocComment()?->getText();
         }
 
-        return preg_match('/\b(?:self|static)\b/i', $written) === 1;
+        return preg_match('/\b(?:self|static|parent)\b/i', $written) === 1;
     }
 
     /**
@@ -420,7 +423,7 @@ final class ClassesToSchemas
 
             return null;
         }
-        $options = ArgumentsToFieldOptions::argumentsToFieldOptions($arguments);
+        $options = ArgumentsToFieldOptions::argumentsToFieldOptions($arguments, $arguments->nameArgument('name'));
         if (is_array($options)) {
             $this->addErrors($options);
 
