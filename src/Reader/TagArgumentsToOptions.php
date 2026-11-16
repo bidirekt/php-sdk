@@ -96,11 +96,9 @@ final class TagArgumentsToOptions
             if (self::isType($value, $key)) {
                 return null;
             }
-            if ($key === 'type' && str_ends_with($value, '[]')) {
-                $usage = sprintf('type=array items=%s', substr($value, 0, -2));
-            }
-            if ($key === 'type' && preg_match('/^map<(.*)>$/', $value, $match) === 1) {
-                $usage = sprintf('type=map values=%s', $match[1]);
+            $fix = DeclaredTypeRules::shortFormToFix($value, AnnotationForm::tag());
+            if ($key === 'type' && $fix !== null) {
+                $usage = $fix;
             }
 
             return self::unreadable($argument, $tag, $usage);
@@ -126,30 +124,25 @@ final class TagArgumentsToOptions
     private static function valuesToDeclared(array $values, CommentTag $tag): SchemaNode|Diagnostic|null
     {
         $type = $values['type'] ?? null;
-        if ($type !== null && isset($values['union'])) {
-            return new Diagnostic(sprintf('declare either "type=" or "union=" in "@bidirekt %s", not both', $tag->keyword), $tag->location);
-        }
-        if (isset($values['items']) && $type !== 'array') {
-            return new Diagnostic(sprintf('"items=" is declared without type=array in "@bidirekt %s": write type=array or remove "items="', $tag->keyword), $tag->location);
-        }
-        if (isset($values['values']) && $type !== 'map') {
-            return new Diagnostic(sprintf('"values=" is declared without type=map in "@bidirekt %s": write type=map or remove "values="', $tag->keyword), $tag->location);
+        $error = DeclaredTypeRules::partsToError(
+            $type !== null,
+            $type,
+            isset($values['items']),
+            isset($values['values']),
+            isset($values['union']),
+            AnnotationForm::tag(),
+            sprintf('"@bidirekt %s"', $tag->keyword),
+        );
+        if ($error !== null) {
+            return new Diagnostic($error[0], $tag->location);
         }
         if (isset($values['union'])) {
             return self::valueToUnion($values['union']);
         }
-        if ($type === 'array') {
-            if (!isset($values['items'])) {
-                return new Diagnostic(sprintf('type=array needs "items=" in "@bidirekt %s": write the type of its items, as in items=Pet', $tag->keyword), $tag->location);
-            }
-
+        if ($type === 'array' && isset($values['items'])) {
             return new ArrayNode(self::leafToNode($values['items']));
         }
-        if ($type === 'map') {
-            if (!isset($values['values'])) {
-                return new Diagnostic(sprintf('type=map needs "values=" in "@bidirekt %s": write the type of its values, as in values=Pet', $tag->keyword), $tag->location);
-            }
-
+        if ($type === 'map' && isset($values['values'])) {
             return new MapNode(self::leafToNode($values['values']));
         }
         if ($type === null) {

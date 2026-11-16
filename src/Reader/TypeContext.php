@@ -17,6 +17,7 @@ final class TypeContext
      * @param ClassScope $scope the classes `self` and `static` name
      * @param SourceLocation $location the field's, where every error points
      * @param AnnotationForm $form the field's annotation, which the fixes are written in
+     * @param string $docblock how messages say where the docblock that types the field is written
      */
     public function __construct(
         public WrittenType $written,
@@ -24,5 +25,6 @@ final class TypeContext
         public ClassScope $scope,
         public SourceLocation $location,
         public AnnotationForm $form,
+        public string $docblock,
     ) {}
 }

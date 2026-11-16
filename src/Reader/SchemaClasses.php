@@ -8,6 +8,7 @@ use Bidirekt\PhpSdk\BidirektSchema;
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\EnumNode;
 use Bidirekt\PhpSdk\Model\NamedSchema;
+use Bidirekt\PhpSdk\Model\SourceLocation;
 use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\Enum_;
 use PhpParser\Node\Stmt\EnumCase;
@@ -20,13 +21,13 @@ use PhpParser\Node\Stmt\Trait_;
  */
 final class SchemaClasses
 {
-    /** @var array<int, string> class node id => schema name */
+    /** @var array<string, string> class node key => schema name */
     private array $classNames = [];
 
-    /** @var array<int, string> enum node id => name declared by its #[BidirektSchema] */
+    /** @var array<string, string> enum node key => name declared by its #[BidirektSchema] */
     private array $enumNames = [];
 
-    /** @var array<int, NamedSchema|list<Diagnostic>> enum node id => schema or why it cannot be one */
+    /** @var array<string, NamedSchema|list<Diagnostic>|null> enum node key => schema, why it cannot be one, or null for an enum without string values */
     private array $enumSchemas = [];
 
     public function __construct(
@@ -34,19 +35,19 @@ final class SchemaClasses
         private SchemaTags $tags,
     ) {}
 
-    public function addClass(ClassLike $node, string $name): void
+    public function addClass(ParsedFile $file, ClassLike $node, string $name): void
     {
-        $this->classNames[spl_object_id($node)] = $name;
+        $this->classNames[$file->nodeToKey($node)] = $name;
     }
 
-    public function classToName(ClassLike $node): ?string
+    public function classToName(ClassDeclaration $class): ?string
     {
-        return $this->classNames[spl_object_id($node)] ?? null;
+        return $this->classNames[$class->file->nodeToKey($class->node)] ?? null;
     }
 
-    public function addEnum(ClassLike $node, string $name): void
+    public function addEnum(ParsedFile $file, ClassLike $node, string $name): void
     {
-        $this->enumNames[spl_object_id($node)] = $name;
+        $this->enumNames[$file->nodeToKey($node)] = $name;
     }
 
     public static function isStringEnum(ClassLike $node): bool
@@ -82,56 +83,146 @@ final class SchemaClasses
     }
 
     /**
-     * @return NamedSchema|list<Diagnostic>
+     * The schema of an enum, or null for one without string values and without a schema annotation.
+     *
+     * @return NamedSchema|list<Diagnostic>|null
      */
-    public function enumToSchema(ClassDeclaration $enum): NamedSchema|array
+    public function enumToSchema(ClassDeclaration $enum): NamedSchema|array|null
     {
-        $id = spl_object_id($enum->node);
-        if (isset($this->enumSchemas[$id])) {
-            return $this->enumSchemas[$id];
+        $id = $enum->file->nodeToKey($enum->node);
+        if (!array_key_exists($id, $this->enumSchemas)) {
+            $this->enumSchemas[$id] = $this->enumToReadSchema($enum, $this->enumNames[$id] ?? null);
         }
-        $name = $this->enumNames[$id] ?? $this->enumToDeclaredName($enum);
-        if (is_array($name)) {
-            $this->enumSchemas[$id] = $name;
-
-            return $name;
-        }
-        $this->enumSchemas[$id] = $this->enumToNewSchema($enum, $name ?? SchemaNaming::classToShortName($enum->name));
 
         return $this->enumSchemas[$id];
     }
 
     /**
-     * The name an enum the project does not read as a schema, like one in vendor/, declares for itself.
-     *
-     * @return string|list<Diagnostic>|null
+     * @param string|null $name the schema name the project read for it, null for an enum it did not read,
+     *                          like one in vendor/, whose annotation is read here
+     * @return NamedSchema|list<Diagnostic>|null
      */
-    private function enumToDeclaredName(ClassDeclaration $enum): string|array|null
+    private function enumToReadSchema(ClassDeclaration $enum, ?string $name): NamedSchema|array|null
     {
-        $this->tags->addFile($enum->file);
-        $tag = $this->tags->schemaTag($enum->node);
-        if ($tag !== null) {
-            $options = TagArgumentsToOptions::argumentsToOptions($tag, $tag->arguments, ['name']);
-            if ($options instanceof Diagnostic) {
-                return [$options];
+        if ($name === null) {
+            $read = $this->nodeToAnnotation($enum->node, $enum->file);
+            if ($read !== null) {
+                [$annotation, $errors] = $read;
+                if ($errors !== []) {
+                    return $errors;
+                }
+                $name = $annotation?->declaredName;
             }
-
-            return $options->name;
         }
-        foreach (SdkAttributes::elementToSdkAttributes($enum->node, $enum->file) as $attribute) {
-            if ($attribute->name !== 'BidirektSchema') {
-                continue;
-            }
-            $arguments = $this->evaluator->argumentsToNamed($attribute->attribute->args, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location, $enum->file);
-            if (is_array($arguments)) {
-                return $arguments;
-            }
-            $name = $arguments->nameArgument('name');
-            if ($name instanceof Diagnostic) {
-                return [$name];
-            }
+        if (!self::isStringEnum($enum->node)) {
+            return null;
+        }
 
-            return $name;
+        return $this->enumToNewSchema($enum, $name ?? SchemaNaming::classToShortName($enum->name));
+    }
+
+    /**
+     * Reads the `#[BidirektSchema]` or `@bidirekt schema` of a class-like, null when it has neither.
+     *
+     * @return array{SchemaAnnotation|null, list<Diagnostic>}|null what the annotation declares, null when
+     *                                                             the errors keep it from being read
+     */
+    public function nodeToAnnotation(ClassLike $node, ParsedFile $file): ?array
+    {
+        $this->tags->addFile($file);
+        $attributes = array_values(array_filter(
+            SdkAttributes::elementToSdkAttributes($node, $file),
+            static fn(SdkAttribute $attribute): bool => $attribute->name === 'BidirektSchema',
+        ));
+        $tag = $this->tags->schemaTag($file, $node);
+        if ($attributes === [] && $tag === null) {
+            return null;
+        }
+        if ($tag !== null) {
+            $errors = [];
+            foreach ($attributes as $attribute) {
+                $errors[] = new Diagnostic(
+                    sprintf('#[BidirektSchema] and "@bidirekt schema" are both on this %s: keep one', self::nodeToKind($node)),
+                    $attribute->location,
+                );
+            }
+            [$annotation, $tagErrors] = $this->tagToAnnotation($node, $tag);
+
+            return [$annotation, [...$errors, ...$tagErrors]];
+        }
+        $description = self::nodeToDescription($node);
+        if (count($attributes) > 1) {
+            return [null, [new Diagnostic(sprintf('#[BidirektSchema] is written more than once on %s: keep one', $description), $attributes[1]->location)]];
+        }
+        if ($node instanceof Interface_ || $node instanceof Trait_) {
+            return [null, [new Diagnostic(
+                sprintf('#[BidirektSchema] is on %s, which cannot be a schema: put it on a class or on an enum with string values', $description),
+                $file->locationOf($node),
+            )]];
+        }
+        $attribute = $attributes[0];
+        $arguments = $this->evaluator->argumentsToNamed($attribute->attribute->args, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location, $file);
+        if (is_array($arguments)) {
+            return [null, $arguments];
+        }
+        if (isset($arguments->values['fields']) && $node instanceof Enum_) {
+            return [null, [new Diagnostic(
+                sprintf('"fields" is declared on %s, whose members are its case values: remove "fields"', $description),
+                $arguments->values['fields']->location,
+            )]];
+        }
+        if ($node instanceof Enum_) {
+            $error = self::enumToUnreadable($node, '#[BidirektSchema] is on', $file->locationOf($node));
+            if ($error !== null) {
+                return [null, [$error]];
+            }
+        }
+        $declared = $arguments->nameArgument('name');
+        if ($declared instanceof Diagnostic) {
+            return [null, [$declared]];
+        }
+
+        return [new SchemaAnnotation($declared, AnnotationForm::attribute(), $arguments->values['fields'] ?? null), []];
+    }
+
+    /**
+     * @return array{SchemaAnnotation|null, list<Diagnostic>}
+     */
+    private function tagToAnnotation(ClassLike $node, CommentTag $tag): array
+    {
+        if ($node instanceof Interface_ || $node instanceof Trait_) {
+            return [null, [new Diagnostic(
+                sprintf('"@bidirekt schema" is above %s, which cannot be a schema: put it above a class or an enum with string values', self::nodeToDescription($node)),
+                $tag->location,
+            )]];
+        }
+        $options = TagArgumentsToOptions::argumentsToOptions($tag, $tag->arguments, ['name']);
+        if ($options instanceof Diagnostic) {
+            return [null, [$options]];
+        }
+        if ($node instanceof Enum_) {
+            $error = self::enumToUnreadable($node, '"@bidirekt schema" is above', $tag->location);
+            if ($error !== null) {
+                return [null, [$error]];
+            }
+        }
+
+        return [new SchemaAnnotation($options->name, AnnotationForm::tag(), null), []];
+    }
+
+    /**
+     * Why an annotated enum cannot be a schema, or null when its values are strings.
+     *
+     * @param string $placed how messages say where the annotation is: `#[BidirektSchema] is on`
+     */
+    private static function enumToUnreadable(Enum_ $node, string $placed, SourceLocation $location): ?Diagnostic
+    {
+        $description = self::nodeToDescription($node);
+        if ($node->scalarType === null) {
+            return new Diagnostic(sprintf('%s %s, which has no values: give its cases string values', $placed, $description), $location);
+        }
+        if (!self::isStringEnum($node)) {
+            return new Diagnostic(sprintf('%s %s, whose values are not strings: give its cases string values', $placed, $description), $location);
         }
 
         return null;

@@ -7,6 +7,7 @@ namespace Bidirekt\PhpSdk\Reader;
 use Bidirekt\PhpSdk\Model\ArrayNode;
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\MapNode;
+use Bidirekt\PhpSdk\Model\NamedSchema;
 use Bidirekt\PhpSdk\Model\PrimitiveNode;
 use Bidirekt\PhpSdk\Model\RefNode;
 use Bidirekt\PhpSdk\Model\SchemaNode;
@@ -103,7 +104,7 @@ final class TypeToSchemaNode
             return $lookup->errors;
         }
         if ($lookup->declaration !== null) {
-            return $this->declarationToSchemaNode($lookup->declaration, $location, $form);
+            return $this->declarationToSchemaNode($lookup->declaration, $written, $location, $form);
         }
         if (ClassIndex::isBuiltIn($class, true)) {
             return [self::untranslatable($written, $location, $form)];
@@ -221,14 +222,14 @@ final class TypeToSchemaNode
             return new PrimitiveNode(self::PRIMITIVES[$name]);
         }
         if ($name === 'self') {
-            return $this->declarationToSchemaNode($context->scope->selfClass, $context->location, $context->form);
+            return $this->declarationToSchemaNode($context->scope->selfClass, $text, $context->location, $context->form);
         }
         if ($name === 'static') {
-            return $this->declarationToSchemaNode($context->scope->staticClass, $context->location, $context->form);
+            return $this->declarationToSchemaNode($context->scope->staticClass, $text, $context->location, $context->form);
         }
         if ($name === 'array') {
             return [new Diagnostic(
-                sprintf('cannot translate "%s" without the type of its items: write @var list<T> or array<string, T>, or declare it with %s', $text, $context->form->declareArray),
+                sprintf('cannot translate "%s" without the type of its items: write @var list<T> or array<string, T> %s, or declare it with %s', $text, $context->docblock, $context->form->declareArray),
                 $context->location,
             )];
         }
@@ -357,29 +358,32 @@ final class TypeToSchemaNode
     /**
      * @return SchemaNode|list<Diagnostic>
      */
-    private function declarationToSchemaNode(ClassDeclaration $class, SourceLocation $location, AnnotationForm $form): SchemaNode|array
+    private function declarationToSchemaNode(ClassDeclaration $class, string $written, SourceLocation $location, AnnotationForm $form): SchemaNode|array
     {
-        $name = $this->schemas->classToName($class->node);
+        $name = $this->schemas->classToName($class);
         if ($name !== null) {
             return new RefNode($name);
         }
-        if (SchemaClasses::isStringEnum($class->node)) {
+        $description = SchemaClasses::nodeToDescription($class->node);
+        if ($class->node instanceof Enum_) {
             $schema = $this->schemas->enumToSchema($class);
+            if ($schema instanceof NamedSchema) {
+                return new RefNode($schema->name);
+            }
             if (is_array($schema)) {
                 return $schema;
             }
+            if ($class->node->scalarType !== null) {
+                return new PrimitiveNode('integer');
+            }
 
-            return new RefNode($schema->name);
-        }
-        $description = SchemaClasses::nodeToDescription($class->node);
-        if ($class->node instanceof Enum_ && $class->node->scalarType !== null) {
-            return new PrimitiveNode('integer');
-        }
-        if ($class->node instanceof Enum_) {
             return [new Diagnostic(sprintf('cannot translate %s, which has no values: give its cases string values', $description), $location)];
         }
         if ($class->node instanceof Interface_) {
             return [new Diagnostic(sprintf('cannot translate %s: use a class with %s as the type', $description, $form->schemaAnnotation), $location)];
+        }
+        if ($this->classes->isVendorClass($class)) {
+            return [self::untranslatable($written, $location, $form)];
         }
 
         return [new Diagnostic(sprintf('cannot translate %s: %s', $description, $form->addSchema), $location)];

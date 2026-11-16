@@ -1,0 +1,1 @@
+pet.php:6 cannot name an anonymous class: declare it with #[BidirektSchema(name: …)]

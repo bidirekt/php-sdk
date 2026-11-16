@@ -6,6 +6,7 @@ namespace Bidirekt\PhpSdk\Tests\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
+use Bidirekt\PhpSdk\Reader\Composer;
 use Bidirekt\PhpSdk\Reader\DirectoryToProject;
 use Bidirekt\PhpSdk\Reader\Project;
 use Bidirekt\PhpSdk\Reader\ProjectToFiles;
@@ -128,6 +129,45 @@ final class ProjectToFilesTest extends TestCase
         symlink('../../packages/pets', $this->root . '/vendor/acme/pets');
 
         self::assertSame(['packages/pets/src/Pet.php'], $this->filesOf($this->root));
+    }
+
+    /**
+     * @runInSeparateProcess
+     * @preserveGlobalState disabled
+     */
+    public function testKeepsAPackageInsideTheVendorFolderOutWhenRealpathAnswersWithBackslashes(): void
+    {
+        // On Windows realpath() answers with "\" separators: the reader's realpath() and is_dir() are replaced to do the same.
+        eval(<<<'PHP'
+            namespace Bidirekt\PhpSdk\Reader;
+
+            function realpath(string $path): string|false
+            {
+                $real = \realpath(strtr($path, '\\', '/'));
+                if ($real === false) {
+                    return false;
+                }
+
+                return strtr($real, '/', '\\');
+            }
+
+            function is_dir(string $path): bool
+            {
+                return \is_dir(strtr($path, '\\', '/'));
+            }
+            PHP);
+        $this->write('composer.json', '{}');
+        $this->write('src/Pet.php', '<?php');
+        $this->write('vendor/acme/base/Base.php', '<?php');
+        $this->write('vendor/composer/installed.json', (string) json_encode([
+            'packages' => [['name' => 'acme/base', 'install-path' => '../acme/base']],
+            'dev-package-names' => [],
+        ]));
+
+        $files = ProjectToFiles::projectToFiles(new Project($this->root, new Composer($this->root . '/vendor', [])));
+
+        self::assertSame([$this->root . '/src/Pet.php'], $files->paths);
+        self::assertSame([], $files->warnings);
     }
 
     public function testReadsASymlinkLoopOnce(): void

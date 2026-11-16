@@ -15,6 +15,7 @@ final class FieldSource
     /**
      * @param string|null $varDoc the docblock of the property or of the promoted parameter, read for its @var
      * @param string|null $constructorDoc the constructor's docblock for a promoted parameter, read for its @param
+     * @param string $docblock how messages say where the docblock that types the field is written
      */
     public function __construct(
         public string $member,
@@ -22,5 +23,6 @@ final class FieldSource
         public ?string $varDoc,
         public ?string $constructorDoc,
         public NameContext $names,
+        public string $docblock,
     ) {}
 }

@@ -1,0 +1,3 @@
+pet.php:13 cannot read "type=Owner[]" in "@bidirekt field": write type=array items=Owner
+pet.php:16 cannot read "type=map<Owner>" in "@bidirekt field": write type=map values=Owner
+pet.php:19 cannot read "type=map<string,Owner>" in "@bidirekt field": write type=map values=Owner

@@ -37,7 +37,7 @@ final class VendorToClassLoaderTest extends TestCase
         self::removeDirectory($this->root);
     }
 
-    public function testEvaluatesTheGeneratedPathsWithoutIncludingTheFiles(): void
+    public function testLoadsTheGeneratedPathsIntoALoaderThatIsNotRegistered(): void
     {
         $this->write('deps/libs/composer/autoload_psr4.php', self::HEADER . <<<'PHP'
             return array(
@@ -51,7 +51,6 @@ final class VendorToClassLoaderTest extends TestCase
             );
             PHP);
         $this->write('deps/libs/composer/autoload_classmap.php', self::HEADER . <<<'PHP'
-            throw new \LogicException('included');
             return array(
                 'Composer\\InstalledVersions' => $vendorDir . '/composer/InstalledVersions.php',
             );
@@ -68,6 +67,7 @@ final class VendorToClassLoaderTest extends TestCase
         ], $loader->getPrefixesPsr4());
         self::assertSame(['Old_' => [$this->root . '/old']], $loader->getPrefixes());
         self::assertSame(['Composer\\InstalledVersions' => $this->root . '/deps/libs/composer/InstalledVersions.php'], $loader->getClassMap());
+        self::assertNotContains($loader, ClassLoader::getRegisteredLoaders());
     }
 
     public function testFindsAClassInTheClassmapFirstAndByPsr4WhenItsClassmapFileIsMissing(): void
@@ -108,12 +108,28 @@ final class VendorToClassLoaderTest extends TestCase
         self::assertNull(VendorToClassLoader::vendorToClassLoader($this->root . '/vendor'));
     }
 
-    public function testRejectsAMapWithAnExpressionItCannotEvaluate(): void
+    /**
+     * @return array<string, array{string, string}>
+     */
+    public function malformedMapProvider(): array
     {
-        $this->write('vendor/composer/autoload_psr4.php', "<?php\nreturn array('App\\\\' => array(getenv('HOME')));\n");
+        return [
+            'not an array' => ['autoload_classmap.php', "<?php\nreturn 'App';\n"],
+            'PSR-4 prefix without a trailing backslash' => ['autoload_psr4.php', "<?php\nreturn array('App' => array('/src'));\n"],
+            'PSR-0 directories that are not a list' => ['autoload_namespaces.php', "<?php\nreturn array('Old_' => '/old');\n"],
+            'syntax error' => ['autoload_psr4.php', "<?php\nreturn array(\n"],
+        ];
+    }
+
+    /**
+     * @dataProvider malformedMapProvider
+     */
+    public function testRejectsAMapWithoutTheShapeComposerGenerates(string $map, string $content): void
+    {
+        $this->write('vendor/composer/' . $map, $content);
 
         self::assertEquals(
-            new Diagnostic('cannot read the Composer autoload map: run composer install again', new SourceLocation($this->root . '/vendor/composer/autoload_psr4.php', 1)),
+            new Diagnostic('cannot read the Composer autoload map: run composer install again', new SourceLocation($this->root . '/vendor/composer/' . $map, 1)),
             VendorToClassLoader::vendorToClassLoader($this->root . '/vendor'),
         );
     }

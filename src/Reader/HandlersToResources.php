@@ -38,14 +38,15 @@ final class HandlersToResources
     }
 
     /**
-     * @param list<ParsedFile> $files
+     * @param list<string> $paths the project files `$files` reads whole
      * @return ReadResult the resources, the lists their bodies declare and the schemas declared on handlers
      */
-    public function filesToResources(array $files): ReadResult
+    public function filesToResources(array $paths, ParsedFiles $files): ReadResult
     {
         $contract = new Contract();
         $errors = [];
-        foreach ($files as $file) {
+        foreach ($paths as $path) {
+            $file = $files->projectFile($path);
             foreach (self::fileToHandlers($file) as $handler) {
                 foreach (SdkAttributes::elementToSdkAttributes($handler, $file) as $attribute) {
                     if ($attribute->name === 'BidirektSchema') {

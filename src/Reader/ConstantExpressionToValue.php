@@ -388,12 +388,12 @@ final class ConstantExpressionToValue
      * The constant's expression and the class that declares it, searched in the class, its traits,
      * its parent and its interfaces, as PHP does.
      *
-     * @param array<int, true> $visited
+     * @param array<string, true> $visited node keys
      * @return ClassConstant|list<Diagnostic>|null
      */
     private function declarationToConstant(ClassDeclaration $declaration, string $constant, array $visited): ClassConstant|array|null
     {
-        $id = spl_object_id($declaration->node);
+        $id = $declaration->file->nodeToKey($declaration->node);
         if (isset($visited[$id])) {
             return null;
         }

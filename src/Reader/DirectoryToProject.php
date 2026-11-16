@@ -43,7 +43,7 @@ final class DirectoryToProject
             $devPaths[] = RelativePathToAbsolute::relativePathToAbsolute($directory, $path);
         }
 
-        return new Composer($directory, RelativePathToAbsolute::relativePathToAbsolute($directory, $vendor), $devPaths);
+        return new Composer(RelativePathToAbsolute::relativePathToAbsolute($directory, $vendor), $devPaths);
     }
 
     /**

@@ -1509,7 +1509,7 @@ src/Pet.php:23 cannot translate "int|string" to a contract type: declare it with
 src/Pet.php:26 cannot translate "mixed" to a contract type: declare it with #[BidirektField(type: …)]
 src/Pet.php:29 cannot translate "object" to a contract type: declare it with #[BidirektField(type: …)]
 src/Pet.php:32 cannot translate "iterable" to a contract type: declare it with #[BidirektField(type: …)]
-src/Pet.php:35 cannot translate "array" without the type of its items: write @var list<T> or array<string, T>, or declare it with #[BidirektField(type: 'array', items: …)]
+src/Pet.php:35 cannot translate "array" without the type of its items: write @var list<T> or array<string, T> in the docblock above the property and its attributes, or declare it with #[BidirektField(type: 'array', items: …)]
 src/Pet.php:39 cannot translate "array<int, string>": write list<string> for a list or array<string, string> for a map
 src/Pet.php:43 cannot translate array shape "array{street: string}": declare a class with #[BidirektSchema] and use it as the type
 src/Pet.php:46 cannot translate enum "Size", which has no values: give its cases string values
@@ -1591,7 +1591,7 @@ src/Pet.php:20 cannot translate "int|string" to a contract type: declare it with
 src/Pet.php:23 cannot translate "mixed" to a contract type: declare it with "@bidirekt field type=<type>"
 src/Pet.php:26 cannot translate "object" to a contract type: declare it with "@bidirekt field type=<type>"
 src/Pet.php:29 cannot translate "iterable" to a contract type: declare it with "@bidirekt field type=<type>"
-src/Pet.php:32 cannot translate "array" without the type of its items: write @var list<T> or array<string, T>, or declare it with "@bidirekt field type=array items=<type>"
+src/Pet.php:32 cannot translate "array" without the type of its items: write @var list<T> or array<string, T> in the docblock above the property and its attributes, or declare it with "@bidirekt field type=array items=<type>"
 src/Pet.php:38 cannot translate "array<int, string>": write list<string> for a list or array<string, string> for a map
 src/Pet.php:44 cannot translate array shape "array{street: string}": declare a class with "@bidirekt schema" and use it as the type
 src/Pet.php:47 cannot translate enum "Size", which has no values: give its cases string values
@@ -3183,7 +3183,7 @@ vendor/bin/php-sdk generate --check
 vendor/bin/php-sdk generate --project apps/api --out apps/api/contracts/generated.yaml
 ```
 
-`generate` reads the project in the current folder and writes `contracts/generated.yaml` in it. With a `composer.json`, it reads every `.php` file of the folder except `vendor/` (or the `config.vendor-dir`), `node_modules/`, hidden folders and the paths of `autoload-dev`; without one, every `.php` file except the same folders. It reads the source code and never runs your app nor loads its autoloader. It reads `vendor/` only to find a parent, a trait, an enum or a constant your annotated code uses, through Composer's autoload files, from the `composer.json` closest to the project, going up as Composer does in a monorepo. A package installed from a Composer `path` repository is read as your code. A syntax error in a file it reads stops it.
+`generate` reads the project in the current folder and writes `contracts/generated.yaml` in it. With a `composer.json`, it reads every `.php` file of the folder except `vendor/` (or the `config.vendor-dir`), `node_modules/`, hidden folders and the paths of `autoload-dev`; without one, every `.php` file except the same folders. It reads the source code and never runs your app. It reads `vendor/` only to find a parent, a trait, an enum or a constant your annotated code uses, through Composer's class maps (`vendor/composer/autoload_psr4.php`, `autoload_namespaces.php` and `autoload_classmap.php`), from the `composer.json` closest to the project, going up as Composer does in a monorepo. It loads those maps with `require`, since they only return arrays, and never loads `vendor/autoload.php` nor the `autoload.files`, which would run code. A package installed from a Composer `path` repository is read as your code. A syntax error in a file it reads stops it.
 
 - `--project <folder>` reads another project, and writes to its folder.
 - `--out <file>` writes to another file.

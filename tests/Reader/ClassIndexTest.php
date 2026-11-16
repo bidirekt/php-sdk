@@ -9,7 +9,7 @@ use Bidirekt\PhpSdk\Model\SourceLocation;
 use Bidirekt\PhpSdk\Reader\ClassIndex;
 use Bidirekt\PhpSdk\Reader\DirectoryToProject;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
-use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
+use Bidirekt\PhpSdk\Reader\ParsedFiles;
 use Bidirekt\PhpSdk\Reader\Project;
 use Bidirekt\PhpSdk\Reader\ProjectToFiles;
 use PHPUnit\Framework\TestCase;
@@ -114,7 +114,7 @@ final class ClassIndexTest extends TestCase
     {
         $this->write('composer.json', '{}');
         $this->write('src/Pet.php', "<?php\nnamespace App;\n\nfinal class Pet {}\n");
-        $this->write('vendor/composer/autoload_classmap.php', "<?php\nreturn array('Acme\\\\Animal' => getenv('HOME'));\n");
+        $this->write('vendor/composer/autoload_classmap.php', "<?php\nreturn 'Acme\\\\Animal';\n");
         $classes = $this->index();
         $usedAt = new SourceLocation($this->root . '/src/Pet.php', 4);
 
@@ -129,10 +129,10 @@ final class ClassIndexTest extends TestCase
     {
         $project = DirectoryToProject::directoryToProject($this->root);
         self::assertInstanceOf(Project::class, $project);
-        $parser = new PhpFileToParsed();
-        $index = new ClassIndex($parser, $project->composer?->vendorDirectory);
+        $files = new ParsedFiles();
+        $index = new ClassIndex($files, $project->composer?->vendorDirectory);
         foreach (ProjectToFiles::projectToFiles($project)->paths as $path) {
-            $read = $parser->projectFileToRead($path);
+            $read = $files->projectFileToRead($path);
             self::assertNotInstanceOf(Diagnostic::class, $read);
             if ($read instanceof ParsedFile) {
                 $index->addParsedFile($read);

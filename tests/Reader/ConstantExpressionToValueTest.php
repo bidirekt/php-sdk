@@ -14,6 +14,7 @@ use Bidirekt\PhpSdk\Reader\ConstantExpressionToValue;
 use Bidirekt\PhpSdk\Reader\ConstantValue;
 use Bidirekt\PhpSdk\Reader\FieldConstruction;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
+use Bidirekt\PhpSdk\Reader\ParsedFiles;
 use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
 use PhpParser\Node\Attribute;
 use PhpParser\NodeFinder;
@@ -153,7 +154,7 @@ final class ConstantExpressionToValueTest extends TestCase
     private function evaluate(ParsedFile $file): AttributeArguments|array
     {
         $parser = new PhpFileToParsed();
-        $classes = new ClassIndex($parser, null);
+        $classes = new ClassIndex(new ParsedFiles(), null);
         $classes->addParsedFile($file);
         foreach (['Codes.php', 'Loop.php'] as $other) {
             if (is_file($this->root . '/' . $other)) {

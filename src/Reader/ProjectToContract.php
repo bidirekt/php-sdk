@@ -9,43 +9,53 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 
 final class ProjectToContract
 {
+    /**
+     * Each step reads the project files one by one, so only the most recently read are kept parsed.
+     */
     public static function projectToContract(Project $project): ReadResult
     {
-        $parser = new PhpFileToParsed();
-        $classes = new ClassIndex($parser, $project->composer?->vendorDirectory);
-        $files = [];
+        $files = new ParsedFiles();
+        $classes = new ClassIndex($files, $project->composer?->vendorDirectory);
+        $paths = [];
         $syntaxErrors = [];
+        $tagged = new TaggedComments();
+        $schemaTags = new SchemaTags();
+        $tagHandlers = new ReadResult(new Contract(), [], []);
+        $attributeWarnings = [];
         $projectFiles = ProjectToFiles::projectToFiles($project);
         foreach ($projectFiles->paths as $path) {
-            $read = $parser->projectFileToRead($path);
+            $read = $files->projectFileToRead($path);
             if ($read instanceof Diagnostic) {
                 $syntaxErrors[] = $read;
 
                 continue;
             }
-            if ($read instanceof ParsedFile) {
-                $files[] = $read;
-                $classes->addParsedFile($read);
+            if (is_array($read)) {
+                $classes->addDeclaredClasses($read);
 
                 continue;
             }
-            $classes->addDeclaredClasses($read);
+            $paths[] = $path;
+            $classes->addParsedFile($read);
+            $fileTagged = FilesToTaggedComments::filesToTaggedComments([$read]);
+            array_push($tagged->errors, ...$fileTagged->errors);
+            array_push($tagged->warnings, ...$fileTagged->warnings);
+            $schemaTags->addProjectFile($read, CommentsToSchemaTags::commentsToSchemaTags($fileTagged->comments));
+            $fileHandlers = TagsToResources::commentsToResources($fileTagged->comments);
+            array_push($tagHandlers->contract->provides, ...$fileHandlers->contract->provides);
+            array_push($tagHandlers->contract->consumes, ...$fileHandlers->contract->consumes);
+            array_push($tagHandlers->contract->schemas, ...$fileHandlers->contract->schemas);
+            array_push($tagHandlers->errors, ...$fileHandlers->errors);
+            array_push($attributeWarnings, ...SdkAttributes::fileToMissingUseWarnings($read), ...SdkAttributes::fileToMisplacedWarnings($read));
         }
         if ($syntaxErrors !== []) {
             return new ReadResult(new Contract(), $syntaxErrors, $projectFiles->warnings);
         }
         $evaluator = new ConstantExpressionToValue($classes);
-        $tagged = FilesToTaggedComments::filesToTaggedComments($files);
-        $schemaTags = CommentsToSchemaTags::commentsToSchemaTags($tagged->comments);
-        $schemaTags->addReadFiles($files);
         $schemaClasses = new SchemaClasses($evaluator, $schemaTags);
-        $schemas = ClassesToSchemas::filesToSchemas($files, $classes, $schemaClasses, $schemaTags);
-        $handlers = (new HandlersToResources($evaluator, new TypeToSchemaNode($classes, $schemaClasses)))->filesToResources($files);
-        $tagHandlers = TagsToResources::commentsToResources($tagged->comments);
-        $warnings = [...$projectFiles->warnings, ...$tagged->warnings, ...$schemaTags->warnings, ...$schemas->warnings];
-        foreach ($files as $file) {
-            array_push($warnings, ...SdkAttributes::fileToMissingUseWarnings($file), ...SdkAttributes::fileToMisplacedWarnings($file));
-        }
+        $schemas = ClassesToSchemas::filesToSchemas($paths, $files, $classes, $schemaClasses, $schemaTags);
+        $handlers = (new HandlersToResources($evaluator, new TypeToSchemaNode($classes, $schemaClasses)))->filesToResources($paths, $files);
+        $warnings = [...$projectFiles->warnings, ...$tagged->warnings, ...$schemaTags->warnings, ...$schemas->warnings, ...$attributeWarnings];
         $contract = new Contract(
             [...$handlers->contract->provides, ...$tagHandlers->contract->provides],
             [...$handlers->contract->consumes, ...$tagHandlers->contract->consumes],

@@ -35,17 +35,13 @@ final class PhpFileToParsed
     }
 
     /**
-     * Every attribute, `use` and tag the SDK reads writes "bidirekt", so only a project file that does is kept
+     * Every attribute, `use` and tag the SDK reads writes "bidirekt", so only a project file that does is read
      * whole; any other is parsed for its syntax errors and the classes it declares, read again on lookup.
      *
      * @return ParsedFile|list<DeclaredClass>|Diagnostic
      */
-    public function projectFileToRead(string $path): ParsedFile|array|Diagnostic
+    public function projectCodeToRead(string $path, string $code): ParsedFile|array|Diagnostic
     {
-        $code = self::fileToCode($path);
-        if ($code instanceof Diagnostic) {
-            return $code;
-        }
         if (stripos($code, 'bidirekt') !== false) {
             return $this->codeToParsed($path, $code);
         }
@@ -63,7 +59,7 @@ final class PhpFileToParsed
         return $declared;
     }
 
-    private function codeToParsed(string $path, string $code): ParsedFile|Diagnostic
+    public function codeToParsed(string $path, string $code): ParsedFile|Diagnostic
     {
         $statements = $this->codeToStatements($path, $code);
         if ($statements instanceof Diagnostic) {
@@ -90,7 +86,7 @@ final class PhpFileToParsed
         }
     }
 
-    private static function fileToCode(string $path): string|Diagnostic
+    public static function fileToCode(string $path): string|Diagnostic
     {
         $code = @file_get_contents($path);
         if ($code === false) {

@@ -24,4 +24,44 @@ final class BinTest extends TestCase
         );
         self::assertSame(1, proc_close($process));
     }
+
+    public function testReadsAnExpressionNestedDeeperThanXdebugAllowsByDefault(): void
+    {
+        if (!extension_loaded('xdebug')) {
+            self::markTestSkipped('Xdebug is not loaded');
+        }
+        $project = sys_get_temp_dir() . '/php-sdk-bin-' . bin2hex(random_bytes(6));
+        mkdir($project);
+        file_put_contents($project . '/deep.php', '<?php $sum = ' . str_repeat('(', 600) . '1' . str_repeat(' + 1)', 600) . ";\n");
+        file_put_contents($project . '/Pet.php', <<<'PHP'
+            <?php
+
+            #[Bidirekt\PhpSdk\BidirektSchema]
+            final class Pet
+            {
+                #[Bidirekt\PhpSdk\BidirektField]
+                public string $name;
+            }
+            PHP);
+        $process = proc_open(
+            [PHP_BINARY, '-d', 'xdebug.mode=develop', '-d', 'xdebug.max_nesting_level=512', __DIR__ . '/../bin/php-sdk', 'generate'],
+            [1 => ['file', $project . '/stdout.txt', 'w'], 2 => ['file', $project . '/stderr.txt', 'w']],
+            $pipes,
+            $project,
+        );
+        self::assertIsResource($process);
+
+        $exitCode = proc_close($process);
+        $output = file_get_contents($project . '/stdout.txt') . file_get_contents($project . '/stderr.txt');
+        $generated = @file_get_contents($project . '/contracts/generated.yaml');
+        foreach (['deep.php', 'Pet.php', 'stdout.txt', 'stderr.txt', 'contracts/generated.yaml'] as $file) {
+            @unlink($project . '/' . $file);
+        }
+        @rmdir($project . '/contracts');
+        rmdir($project);
+
+        self::assertSame('', $output);
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString("  Pet:\n", (string) $generated);
+    }
 }

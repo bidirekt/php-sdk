@@ -14,9 +14,6 @@ final class ClassIndex
     /** @var array<string, list<DeclaredClass>> lowercase name => where the project files declare it */
     private array $project = [];
 
-    /** @var array<string, array<string, ClassDeclaration>|Diagnostic> real path => lowercase name => declaration, for the files read so far */
-    private array $files = [];
-
     /** @var array<string, list<Diagnostic>> */
     private array $duplicateErrors = [];
 
@@ -24,11 +21,14 @@ final class ClassIndex
 
     private ClassLoader|Diagnostic|null $vendor = null;
 
+    /** @var array<string, true> paths of the files read for a class the vendor folder declares */
+    private array $vendorFiles = [];
+
     /**
      * @param string|null $vendorDirectory the Composer project's vendor folder, null without a `composer.json`
      */
     public function __construct(
-        private PhpFileToParsed $parser,
+        private ParsedFiles $files,
         private ?string $vendorDirectory,
     ) {}
 
@@ -37,7 +37,6 @@ final class ClassIndex
         foreach ($file->classDeclarations() as $declaration) {
             $this->project[strtolower($declaration->name)][] = new DeclaredClass($declaration->name, $file->locationOf($declaration->node));
         }
-        $this->files[self::pathToKey($file->path)] = self::parsedToDeclarations($file);
     }
 
     /**
@@ -51,7 +50,7 @@ final class ClassIndex
     }
 
     /**
-     * The class from the project files, or else from the vendor folder, read on demand.
+     * The class from the project files, or else from the vendor folder, read on demand: none for a class PHP declares.
      *
      * @param SourceLocation $usedAt where the code that needs the class is, for the error when the vendor folder is missing
      */
@@ -68,7 +67,7 @@ final class ClassIndex
 
             return new ClassLookup(null, $this->duplicateErrors[$key]);
         }
-        if ($this->vendorDirectory === null) {
+        if ($this->vendorDirectory === null || self::isBuiltIn($class, true)) {
             return new ClassLookup(null);
         }
         if (!$this->vendorRead) {
@@ -89,7 +88,20 @@ final class ClassIndex
             return new ClassLookup(null);
         }
 
-        return $this->fileLookup($file, $key);
+        $lookup = $this->fileLookup($file, $key);
+        if ($lookup->declaration !== null) {
+            $this->vendorFiles[$lookup->declaration->file->path] = true;
+        }
+
+        return $lookup;
+    }
+
+    /**
+     * Whether the class was found through the vendor folder, so the developer cannot annotate it.
+     */
+    public function isVendorClass(ClassDeclaration $class): bool
+    {
+        return isset($this->vendorFiles[$class->file->path]);
     }
 
     /**
@@ -106,38 +118,12 @@ final class ClassIndex
 
     private function fileLookup(string $path, string $key): ClassLookup
     {
-        $declarations = $this->files[self::pathToKey($path)] ??= self::parsedToDeclarations($this->parser->fileToParsed($path));
-        if ($declarations instanceof Diagnostic) {
-            return new ClassLookup(null, [$declarations]);
-        }
-
-        return new ClassLookup($declarations[$key] ?? null);
-    }
-
-    /**
-     * @return array<string, ClassDeclaration>|Diagnostic lowercase name => its first declaration in the file
-     */
-    private static function parsedToDeclarations(ParsedFile|Diagnostic $parsed): array|Diagnostic
-    {
+        $parsed = $this->files->pathToParsed($path);
         if ($parsed instanceof Diagnostic) {
-            return $parsed;
-        }
-        $declarations = [];
-        foreach ($parsed->classDeclarations() as $declaration) {
-            $declarations[strtolower($declaration->name)] ??= $declaration;
+            return new ClassLookup(null, [$parsed]);
         }
 
-        return $declarations;
-    }
-
-    private static function pathToKey(string $path): string
-    {
-        $real = realpath($path);
-        if ($real === false) {
-            return $path;
-        }
-
-        return $real;
+        return new ClassLookup($parsed->classDeclarationNamed($key));
     }
 
     /**

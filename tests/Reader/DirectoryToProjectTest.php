@@ -32,7 +32,7 @@ final class DirectoryToProjectTest extends TestCase
 
         $project = DirectoryToProject::directoryToProject($this->root . '/');
 
-        self::assertEquals(new Project($this->root, new Composer($this->root, $this->root . '/vendor', [
+        self::assertEquals(new Project($this->root, new Composer($this->root . '/vendor', [
             $this->root . '/tests',
             $this->root . '/spec',
             $this->root . '/old',
@@ -59,7 +59,7 @@ final class DirectoryToProjectTest extends TestCase
 
         $project = DirectoryToProject::directoryToProject($this->root . '/apps/api');
 
-        self::assertEquals(new Project($this->root . '/apps/api', new Composer($this->root, $this->root . '/vendor', [])), $project);
+        self::assertEquals(new Project($this->root . '/apps/api', new Composer($this->root . '/vendor', [])), $project);
     }
 
     public function testHasNoComposerContextWithoutComposerJson(): void

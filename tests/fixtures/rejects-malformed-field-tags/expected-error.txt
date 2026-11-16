@@ -22,4 +22,4 @@ pets.php:74 type=array needs "items=" in "@bidirekt field": write the type of it
 pets.php:77 type=map needs "values=" in "@bidirekt field": write the type of its values, as in values=Pet
 pets.php:80 cannot read "items=Pet[]" in "@bidirekt field": write "items=" followed by string, integer, float, number, boolean or a schema name
 pets.php:83 cannot read "values=array" in "@bidirekt field": write "values=" followed by string, integer, float, number, boolean or a schema name
-pets.php:87 cannot translate "array" without the type of its items: write @var list<T> or array<string, T>, or declare it with "@bidirekt field type=array items=<type>"
+pets.php:87 cannot translate "array" without the type of its items: write @var list<T> or array<string, T> in the docblock above the property and its attributes, or declare it with "@bidirekt field type=array items=<type>"

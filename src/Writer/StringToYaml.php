@@ -25,9 +25,13 @@ final class StringToYaml
 
     /**
      * $indent is the indentation of the scalar's own children (the pair's indentation plus one step).
+     * Invalid UTF-8 becomes U+FFFD whatever the style, so the file is valid UTF-8.
      */
     public static function stringToYaml(string $value, string $indent, bool $implicitKey): string
     {
+        if (preg_match('//u', $value) !== 1) {
+            $value = self::invalidUtf8ToReplaced($value);
+        }
         if (preg_match('/[\x{0}-\x{8}\x{b}-\x{1f}\x{7f}-\x{9f}]/u', $value) === 1) {
             return self::stringToDoubleQuoted($value, $indent, $implicitKey);
         }
@@ -200,6 +204,16 @@ final class StringToYaml
     private static function stringToJson(string $value): string
     {
         return (string) json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_LINE_TERMINATORS | JSON_INVALID_UTF8_SUBSTITUTE);
+    }
+
+    private static function invalidUtf8ToReplaced(string $value): string
+    {
+        $replaced = json_decode(self::stringToJson($value));
+        if (!is_string($replaced)) {
+            return $value;
+        }
+
+        return $replaced;
     }
 
     private static function unicodeEscapeToYaml(string $code): string

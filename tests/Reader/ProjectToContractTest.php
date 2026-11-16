@@ -68,7 +68,7 @@ final class ProjectToContractTest extends TestCase
         $this->write('pet.php', "<?php\n\nuse Bidirekt\\PhpSdk\\BidirektField;\nuse Bidirekt\\PhpSdk\\BidirektSchema;\n\n#[BidirektSchema]\nfinal class Pet\n{\n    #[BidirektField]\n    /** @var list<string> */\n    public array \$tags;\n}\n");
 
         self::assertEquals([
-            new Diagnostic("cannot translate \"array\" without the type of its items: write @var list<T> or array<string, T>, or declare it with #[BidirektField(type: 'array', items: …)]", new SourceLocation($this->root . '/pet.php', 11)),
+            new Diagnostic("cannot translate \"array\" without the type of its items: write @var list<T> or array<string, T> in the docblock above the property and its attributes, or declare it with #[BidirektField(type: 'array', items: …)]", new SourceLocation($this->root . '/pet.php', 11)),
         ], $this->read()->errors);
     }
 

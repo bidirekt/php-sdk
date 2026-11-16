@@ -85,7 +85,7 @@ final class FieldToSchemaNode
                 $location,
             )];
         }
-        $node = $this->types->writtenToSchemaNode(new TypeContext($written, $declared, $scope, $location, $form));
+        $node = $this->types->writtenToSchemaNode(new TypeContext($written, $declared, $scope, $location, $form, $field->docblock));
         if (is_array($node) || $arrayNative === null) {
             return $node;
         }

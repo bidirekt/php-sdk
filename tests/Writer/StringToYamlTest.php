@@ -50,6 +50,8 @@ final class StringToYamlTest extends TestCase
             'both quote kinds' => ['- both \' and "', '"- both \' and \\""'],
             'document start inside a nested value' => ['---', '---'],
             'non-breaking space' => ["x\u{a0}", "x\u{a0}"],
+            'invalid UTF-8 in plain text is replaced' => ["a\xffb", "a\u{fffd}b"],
+            'invalid UTF-8 in a block is replaced' => ["a\xff\nb", "|-\n    a\u{fffd}\n    b"],
             'line separator' => ["\u{2028}", "\u{2028}"],
             'control character' => ["a\x01b", '"a\x01b"'],
             'null character' => ["a\x00b", '"a\0b"'],
@@ -105,6 +107,7 @@ final class StringToYamlTest extends TestCase
             ],
             'line break and double quotes' => ["\"q\"\nx", '"\"q\"\nx"'],
             'leading space' => [' x', '" x"'],
+            'invalid UTF-8 in a key is replaced' => ["birth\xe9date", "birth\u{fffd}date"],
         ];
     }
 

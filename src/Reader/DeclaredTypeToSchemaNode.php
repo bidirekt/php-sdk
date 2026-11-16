@@ -34,9 +34,6 @@ final class DeclaredTypeToSchemaNode
     public function argumentsToSchemaNode(AttributeArguments $arguments, SourceLocation $location, string $where = '#[BidirektField]'): SchemaNode|array|null
     {
         $values = $arguments->values;
-        if (isset($values['type']) && isset($values['union'])) {
-            return [new Diagnostic(sprintf('declare either "type" or "union" in %s, not both', $where), $location)];
-        }
         if (!isset($values['type']) && !isset($values['union']) && !isset($values['items']) && !isset($values['values'])) {
             return null;
         }
@@ -54,11 +51,15 @@ final class DeclaredTypeToSchemaNode
         if ($type !== null && is_string($type->value)) {
             $kind = $type->value;
         }
-        if ($items !== null && $kind !== 'array') {
-            return [new Diagnostic('"items" is declared without type: \'array\': write type: \'array\' or remove "items"', $items->location)];
-        }
-        if ($values !== null && $kind !== 'map') {
-            return [new Diagnostic('"values" is declared without type: \'map\': write type: \'map\' or remove "values"', $values->location)];
+        $error = DeclaredTypeRules::partsToError($type !== null, $kind, $items !== null, $values !== null, $union !== null, AnnotationForm::attribute(), $where);
+        if ($error !== null) {
+            [$message, $part] = $error;
+            $at = $location;
+            if ($part !== null) {
+                $at = ['type' => $type, 'items' => $items, 'values' => $values][$part]->location ?? $location;
+            }
+
+            return [new Diagnostic($message, $at)];
         }
         if ($union !== null) {
             return $this->unionToNode($union);
@@ -66,10 +67,7 @@ final class DeclaredTypeToSchemaNode
         if ($type === null) {
             return [new Diagnostic(sprintf('%s declares no type: write "type" or "union"', $where), $location)];
         }
-        if ($kind === 'array') {
-            if ($items === null) {
-                return [new Diagnostic('type: \'array\' needs "items": write the type of its items, as in items: \'Pet\'', $type->location)];
-            }
+        if ($kind === 'array' && $items !== null) {
             $node = $this->nestedToNode($items, 'items');
             if (is_array($node)) {
                 return $node;
@@ -77,10 +75,7 @@ final class DeclaredTypeToSchemaNode
 
             return new ArrayNode($node);
         }
-        if ($kind === 'map') {
-            if ($values === null) {
-                return [new Diagnostic('type: \'map\' needs "values": write the type of its values, as in values: \'Pet\'', $type->location)];
-            }
+        if ($kind === 'map' && $values !== null) {
             $node = $this->nestedToNode($values, 'values');
             if (is_array($node)) {
                 return $node;
@@ -117,9 +112,6 @@ final class DeclaredTypeToSchemaNode
                 )];
             }
             $parts[$key->value] = $item->value;
-        }
-        if (isset($parts['type']) && isset($parts['union'])) {
-            return [new Diagnostic(sprintf('declare either "type" or "union" in "%s", not both', $what), $value->location)];
         }
         $nullable = $parts['nullable'] ?? null;
         if ($nullable !== null && !is_bool($nullable->value)) {
@@ -164,17 +156,9 @@ final class DeclaredTypeToSchemaNode
                 $value->location,
             )];
         }
-        if (str_ends_with($type, '[]')) {
-            return [new Diagnostic(
-                sprintf('cannot read type "%s": write type: \'array\', items: \'%s\'', $type, substr($type, 0, -2)),
-                $value->location,
-            )];
-        }
-        if (preg_match('/^map<(?:.*,)?\s*(.*)>$/', $type, $match) === 1) {
-            return [new Diagnostic(
-                sprintf('cannot read type "%s": write type: \'map\', values: \'%s\'', $type, $match[1]),
-                $value->location,
-            )];
+        $fix = DeclaredTypeRules::shortFormToFix($type, AnnotationForm::attribute());
+        if ($fix !== null) {
+            return [new Diagnostic(sprintf('cannot read type "%s": write %s', $type, $fix), $value->location)];
         }
 
         return new RefNode($type);

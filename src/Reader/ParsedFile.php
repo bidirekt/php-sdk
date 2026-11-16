@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bidirekt\PhpSdk\Reader;
 
 use Bidirekt\PhpSdk\Model\SourceLocation;
+use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -19,6 +20,9 @@ use PhpParser\Token;
 
 final class ParsedFile
 {
+    /** @var array<string, ClassDeclaration>|null lowercase name => its first declaration in the file */
+    private ?array $declarations = null;
+
     /**
      * @param list<Node> $statements with names resolved, the original kept in the "originalName" attribute
      * @param list<Token> $tokens
@@ -68,6 +72,39 @@ final class ParsedFile
         }
 
         return $declarations;
+    }
+
+    public function classDeclarationNamed(string $lowercaseName): ?ClassDeclaration
+    {
+        if ($this->declarations === null) {
+            $this->declarations = [];
+            foreach ($this->classDeclarations() as $declaration) {
+                $this->declarations[strtolower($declaration->name)] ??= $declaration;
+            }
+        }
+
+        return $this->declarations[$lowercaseName] ?? null;
+    }
+
+    /**
+     * Names the node by where it is written, so the node a later read of the file builds has the same key.
+     */
+    public function nodeToKey(Node $node): string
+    {
+        return sprintf('%s:%d:%d:%s', $this->path, $node->getStartFilePos(), $node->getEndFilePos(), $node::class);
+    }
+
+    /**
+     * The class-like a read of the same code gave this key.
+     */
+    public function keyToClassLike(string $key): ClassLike
+    {
+        $found = (new NodeFinder())->findFirst($this->statements, fn(Node $node): bool => $node instanceof ClassLike && $this->nodeToKey($node) === $key);
+        if (!$found instanceof ClassLike) {
+            throw new LogicException(sprintf('no class-like in "%s" has the key "%s"', $this->path, $key));
+        }
+
+        return $found;
     }
 
     private function lineOf(Node $node): int

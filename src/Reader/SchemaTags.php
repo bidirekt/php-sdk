@@ -9,16 +9,16 @@ use PhpParser\Node;
 
 /**
  * The `@bidirekt schema` tag of each class-like and the `@bidirekt field` tag of each property and
- * parameter, keyed by the node id of the element the docblock is above.
+ * parameter, keyed by the node key of the element the docblock is above.
  */
 final class SchemaTags
 {
-    /** @var array<int, true> ids of the files whose tags are read */
+    /** @var array<string, true> paths of the files whose tags are read */
     private array $readFiles = [];
 
     /**
-     * @param array<int, CommentTag> $schemas
-     * @param array<int, CommentTag> $fields
+     * @param array<string, CommentTag> $schemas
+     * @param array<string, CommentTag> $fields
      * @param list<Diagnostic> $errors
      * @param list<Diagnostic> $warnings
      */
@@ -30,13 +30,15 @@ final class SchemaTags
     ) {}
 
     /**
-     * @param list<ParsedFile> $files the files whose tags these are
+     * Adds the tags of a project file, read with the other project files'.
      */
-    public function addReadFiles(array $files): void
+    public function addProjectFile(ParsedFile $file, self $read): void
     {
-        foreach ($files as $file) {
-            $this->readFiles[spl_object_id($file)] = true;
-        }
+        $this->readFiles[$file->path] = true;
+        $this->schemas += $read->schemas;
+        $this->fields += $read->fields;
+        array_push($this->errors, ...$read->errors);
+        array_push($this->warnings, ...$read->warnings);
     }
 
     /**
@@ -44,10 +46,10 @@ final class SchemaTags
      */
     public function addFile(ParsedFile $file): void
     {
-        if (isset($this->readFiles[spl_object_id($file)])) {
+        if (isset($this->readFiles[$file->path])) {
             return;
         }
-        $this->readFiles[spl_object_id($file)] = true;
+        $this->readFiles[$file->path] = true;
         $tagged = FilesToTaggedComments::filesToTaggedComments([$file]);
         $read = CommentsToSchemaTags::commentsToSchemaTags($tagged->comments);
         $this->schemas += $read->schemas;
@@ -55,13 +57,13 @@ final class SchemaTags
         array_push($this->errors, ...$tagged->errors, ...$read->errors);
     }
 
-    public function schemaTag(Node $element): ?CommentTag
+    public function schemaTag(ParsedFile $file, Node $element): ?CommentTag
     {
-        return $this->schemas[spl_object_id($element)] ?? null;
+        return $this->schemas[$file->nodeToKey($element)] ?? null;
     }
 
-    public function fieldTag(Node $element): ?CommentTag
+    public function fieldTag(ParsedFile $file, Node $element): ?CommentTag
     {
-        return $this->fields[spl_object_id($element)] ?? null;
+        return $this->fields[$file->nodeToKey($element)] ?? null;
     }
 }

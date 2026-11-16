@@ -122,12 +122,20 @@ final class ProjectToFiles
                 continue;
             }
             $real = realpath($composer->vendorDirectory . '/composer/' . $package['install-path']);
-            if ($real !== false && is_dir($real) && !str_starts_with($real . '/', $vendor . '/')) {
+            if ($real !== false && is_dir($real) && !str_starts_with(self::pathToSlashes($real) . '/', self::pathToSlashes($vendor) . '/')) {
                 $directories[] = $real;
             }
         }
 
         return $directories;
+    }
+
+    /**
+     * On Windows, realpath() answers with `\` separators.
+     */
+    private static function pathToSlashes(string $path): string
+    {
+        return strtr($path, '\\', '/');
     }
 
     /**
