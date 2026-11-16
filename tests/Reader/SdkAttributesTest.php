@@ -4,6 +4,10 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Tests\Reader;
 
+use Bidirekt\PhpSdk\BidirektConsumer;
+use Bidirekt\PhpSdk\BidirektField;
+use Bidirekt\PhpSdk\BidirektProvider;
+use Bidirekt\PhpSdk\BidirektSchema;
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
@@ -144,8 +148,31 @@ final class SdkAttributesTest extends TestCase
         ], SdkAttributes::fileToMissingUseWarnings($parsed));
     }
 
+    public function testReadsPositionalArgumentsInTheOrderTheAttributeBindsThem(): void
+    {
+        $field = new BidirektField('petId');
+        $attributes = [
+            [new BidirektSchema('Pet', [$field]), ['Pet', [$field]]],
+            [
+                new BidirektField('pet_name', 'string', 'Item', 'Value', true, false, 'The name', ['card' => 'Card']),
+                ['pet_name', 'string', 'Item', 'Value', true, false, 'The name', ['card' => 'Card']],
+            ],
+            [new BidirektProvider('GET', '/pets', [200 => 'Pet'], 'NewPet'), ['GET', '/pets', [200 => 'Pet'], 'NewPet']],
+            [new BidirektConsumer('pets', 'GET', '/pets', [200 => 'Pet'], 'NewPet'), ['pets', 'GET', '/pets', [200 => 'Pet'], 'NewPet']],
+        ];
+
+        foreach ($attributes as [$attribute, $arguments]) {
+            $class = get_class($attribute);
+            $parameters = SdkAttributes::classToParameters($class);
+            self::assertCount(count($arguments), $parameters, $class);
+            foreach ($parameters as $position => $parameter) {
+                self::assertSame($arguments[$position], $attribute->{$parameter}, sprintf('%s argument %d', $class, $position));
+            }
+        }
+    }
+
     /**
-     * @return list<array{string, int}>
+     * @return list<array{string, int|null}>
      */
     private function namesAndLines(ParsedFile $parsed, ?Node $element): array
     {

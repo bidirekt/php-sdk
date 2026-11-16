@@ -12,34 +12,39 @@ final class ProjectToContract
     public static function projectToContract(Project $project): ReadResult
     {
         $parser = new PhpFileToParsed();
+        $classes = new ClassIndex($parser, $project->composer?->vendorDirectory);
         $files = [];
         $syntaxErrors = [];
-        foreach (ProjectToFiles::projectToFiles($project) as $path) {
-            $parsed = $parser->fileToParsed($path);
-            if ($parsed instanceof Diagnostic) {
-                $syntaxErrors[] = $parsed;
+        $projectFiles = ProjectToFiles::projectToFiles($project);
+        foreach ($projectFiles->paths as $path) {
+            $read = $parser->projectFileToRead($path);
+            if ($read instanceof Diagnostic) {
+                $syntaxErrors[] = $read;
 
                 continue;
             }
-            $files[] = $parsed;
+            if ($read instanceof ParsedFile) {
+                $files[] = $read;
+                $classes->addParsedFile($read);
+
+                continue;
+            }
+            $classes->addDeclaredClasses($read);
         }
         if ($syntaxErrors !== []) {
-            return new ReadResult(new Contract(), $syntaxErrors, []);
-        }
-        $classes = ClassIndex::projectToIndex($project, $parser, $files);
-        if ($classes instanceof Diagnostic) {
-            return new ReadResult(new Contract(), [$classes], []);
+            return new ReadResult(new Contract(), $syntaxErrors, $projectFiles->warnings);
         }
         $evaluator = new ConstantExpressionToValue($classes);
-        $schemaClasses = new SchemaClasses($evaluator);
         $tagged = FilesToTaggedComments::filesToTaggedComments($files);
         $schemaTags = CommentsToSchemaTags::commentsToSchemaTags($tagged->comments);
+        $schemaTags->addReadFiles($files);
+        $schemaClasses = new SchemaClasses($evaluator, $schemaTags);
         $schemas = ClassesToSchemas::filesToSchemas($files, $classes, $schemaClasses, $schemaTags);
         $handlers = (new HandlersToResources($evaluator, new TypeToSchemaNode($classes, $schemaClasses)))->filesToResources($files);
         $tagHandlers = TagsToResources::commentsToResources($tagged->comments);
-        $warnings = [...$tagged->warnings, ...$schemaTags->warnings, ...$schemas->warnings];
+        $warnings = [...$projectFiles->warnings, ...$tagged->warnings, ...$schemaTags->warnings, ...$schemas->warnings];
         foreach ($files as $file) {
-            array_push($warnings, ...SdkAttributes::fileToMissingUseWarnings($file));
+            array_push($warnings, ...SdkAttributes::fileToMissingUseWarnings($file), ...SdkAttributes::fileToMisplacedWarnings($file));
         }
         $contract = new Contract(
             [...$handlers->contract->provides, ...$tagHandlers->contract->provides],

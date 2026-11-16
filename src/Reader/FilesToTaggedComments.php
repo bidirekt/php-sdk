@@ -22,8 +22,6 @@ use PhpParser\NodeFinder;
  */
 final class FilesToTaggedComments
 {
-    private const KEYWORD_LIST = 'provides, consumes, request, response, schema or field';
-
     private const ARGUMENT_PATTERN = '/description="[^"]*"(?=\s|$)|union=\{[^}]*\}\S*|\S+/';
 
     private const LINE_START_PATTERN = '/^\s*(?:\/\*\*)?\s*\**\s*/';
@@ -31,8 +29,6 @@ final class FilesToTaggedComments
     private const LINE_PREFIX_PATTERN = '/^\s*(?:\/\*\*)?\s*\**\s*$/';
 
     private const MENTION_PATTERN = '/(?<![^\s*])(@bidirekt[^\s*]*)[ \t]*([^\s*]*)/i';
-
-    private const SDK_ATTRIBUTES = ['BidirektSchema', 'BidirektField', 'BidirektProvider', 'BidirektConsumer'];
 
     /**
      * @param list<ParsedFile> $files
@@ -145,12 +141,12 @@ final class FilesToTaggedComments
         $words = self::textToArguments($text);
         $keyword = array_shift($words);
         if ($keyword === null) {
-            $read->errors[] = new Diagnostic(sprintf('"@bidirekt" needs a keyword: use %s', self::KEYWORD_LIST), $location);
+            $read->errors[] = new Diagnostic(sprintf('"@bidirekt" needs a keyword: use %s', NamesToChoice::namesToChoice(CommentTag::KEYWORDS)), $location);
 
             return null;
         }
         if (!in_array($keyword, CommentTag::KEYWORDS, true)) {
-            $read->errors[] = new Diagnostic(sprintf('unknown tag "@bidirekt %s": use %s', $keyword, self::KEYWORD_LIST), $location);
+            $read->errors[] = new Diagnostic(sprintf('unknown tag "@bidirekt %s": use %s', $keyword, NamesToChoice::namesToChoice(CommentTag::KEYWORDS)), $location);
 
             return null;
         }
@@ -281,7 +277,7 @@ final class FilesToTaggedComments
     {
         $name = preg_split('/[^\w$]/', substr($written, 1))[0] ?? '';
 
-        return str_starts_with($written, '@bidirekt/') || in_array($name, self::SDK_ATTRIBUTES, true);
+        return str_starts_with($written, '@bidirekt/') || in_array($name, SdkAttributes::shortNames(), true);
     }
 
     /**

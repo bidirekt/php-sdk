@@ -34,14 +34,14 @@ final class FieldToSchemaNode
      * @param SourceLocation $location the field's, where every error about its type points
      * @return SchemaNode|list<Diagnostic>
      */
-    public function fieldToSchemaNode(FieldSource $field, AttributeArguments $arguments, ClassDeclaration $owner, SourceLocation $location): SchemaNode|array
+    public function fieldToSchemaNode(FieldSource $field, AttributeArguments $arguments, ClassDeclaration $owner, ClassScope $scope, SourceLocation $location): SchemaNode|array
     {
         $declared = $this->declared->argumentsToSchemaNode($arguments, $location);
         if (is_array($declared)) {
             return $declared;
         }
 
-        return $this->declaredToSchemaNode($field, $declared, $owner, $location, AnnotationForm::attribute());
+        return $this->declaredToSchemaNode($field, $declared, $owner, $scope, $location, AnnotationForm::attribute());
     }
 
     /**
@@ -49,7 +49,7 @@ final class FieldToSchemaNode
      * @param SourceLocation $location the field's, where every error about its type points
      * @return SchemaNode|list<Diagnostic>
      */
-    public function declaredToSchemaNode(FieldSource $field, ?SchemaNode $declared, ClassDeclaration $owner, SourceLocation $location, AnnotationForm $form): SchemaNode|array
+    public function declaredToSchemaNode(FieldSource $field, ?SchemaNode $declared, ClassDeclaration $owner, ClassScope $scope, SourceLocation $location, AnnotationForm $form): SchemaNode|array
     {
         $doc = $this->fieldToDocType($field, $location);
         if ($doc instanceof Diagnostic) {
@@ -58,7 +58,7 @@ final class FieldToSchemaNode
         $native = null;
         if ($field->nativeType !== null) {
             $text = $owner->file->textOf($field->nativeType);
-            $native = $this->docs->textToWrittenType($text, $field->scope);
+            $native = $this->docs->textToWrittenType($text, $field->names);
             if ($native === null) {
                 return [new Diagnostic(sprintf('cannot translate "%s" to a contract type: declare it with %s', $text, $form->declareType), $location)];
             }
@@ -85,7 +85,7 @@ final class FieldToSchemaNode
                 $location,
             )];
         }
-        $node = $this->types->writtenToSchemaNode(new TypeContext($written, $declared, $owner, $location, $form));
+        $node = $this->types->writtenToSchemaNode(new TypeContext($written, $declared, $scope, $location, $form));
         if (is_array($node) || $arrayNative === null) {
             return $node;
         }
@@ -102,8 +102,8 @@ final class FieldToSchemaNode
 
     private function fieldToDocType(FieldSource $field, SourceLocation $location): WrittenType|Diagnostic|null
     {
-        $var = $this->docs->docToVarType($field->varDoc, $field->member, $field->scope, $location);
-        $param = $this->docs->docToParamType($field->constructorDoc, $field->member, $field->scope, $location);
+        $var = $this->docs->docToVarType($field->varDoc, $field->member, $field->names, $location);
+        $param = $this->docs->docToParamType($field->constructorDoc, $field->member, $field->names, $location);
         if ($var instanceof Diagnostic || $param === null) {
             return $var;
         }

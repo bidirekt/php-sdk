@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Tests\Reader;
 
+use Bidirekt\PhpSdk\Model\Diagnostic;
+use Bidirekt\PhpSdk\Model\SourceLocation;
 use Bidirekt\PhpSdk\Reader\DirectoryToProject;
 use Bidirekt\PhpSdk\Reader\Project;
 use Bidirekt\PhpSdk\Reader\ProjectToFiles;
@@ -136,6 +138,27 @@ final class ProjectToFilesTest extends TestCase
         self::assertSame(['src/Pet.php'], $this->filesOf($this->root));
     }
 
+    public function testWarnsOfAFolderItCannotReadAndSkipsIt(): void
+    {
+        $this->write('src/Pet.php', '<?php');
+        $this->write('locked/Owner.php', '<?php');
+        chmod($this->root . '/locked', 0);
+        if (is_readable($this->root . '/locked')) {
+            chmod($this->root . '/locked', 0755);
+            self::markTestSkipped('the folder stays readable: run the tests as a user other than root');
+        }
+        $project = DirectoryToProject::directoryToProject($this->root);
+        self::assertInstanceOf(Project::class, $project);
+
+        $files = ProjectToFiles::projectToFiles($project);
+        chmod($this->root . '/locked', 0755);
+
+        self::assertSame([$this->root . '/src/Pet.php'], $files->paths);
+        self::assertEquals([
+            new Diagnostic('cannot read the folder, so its files are not read: check that it can be read', new SourceLocation($this->root . '/locked')),
+        ], $files->warnings);
+    }
+
     /**
      * @return list<string>
      */
@@ -144,7 +167,7 @@ final class ProjectToFilesTest extends TestCase
         $project = DirectoryToProject::directoryToProject($directory);
         self::assertInstanceOf(Project::class, $project);
         $relative = [];
-        foreach (ProjectToFiles::projectToFiles($project) as $file) {
+        foreach (ProjectToFiles::projectToFiles($project)->paths as $file) {
             $relative[] = $this->relativeTo($project->directory, $file);
         }
 

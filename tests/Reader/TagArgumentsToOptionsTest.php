@@ -13,7 +13,7 @@ use Bidirekt\PhpSdk\Model\SourceLocation;
 use Bidirekt\PhpSdk\Model\UnionNode;
 use Bidirekt\PhpSdk\Reader\CommentTag;
 use Bidirekt\PhpSdk\Reader\TagArgumentsToOptions;
-use Bidirekt\PhpSdk\Reader\TagFieldOptions;
+use Bidirekt\PhpSdk\Reader\FieldOptions;
 use PHPUnit\Framework\TestCase;
 
 final class TagArgumentsToOptionsTest extends TestCase
@@ -22,7 +22,7 @@ final class TagArgumentsToOptionsTest extends TestCase
     {
         $options = self::read(['name=pet_name', 'optional=true', 'nullable=false', 'description="Shown on the card"', 'type=Pet']);
 
-        self::assertInstanceOf(TagFieldOptions::class, $options);
+        self::assertInstanceOf(FieldOptions::class, $options);
         self::assertSame(['pet_name', 'Shown on the card', true, false], [$options->name, $options->description, $options->optional, $options->nullable]);
         self::assertInstanceOf(RefNode::class, $options->declared);
         self::assertSame('Pet', $options->declared->schema);
@@ -34,13 +34,13 @@ final class TagArgumentsToOptionsTest extends TestCase
         $map = self::read(['type=map', 'values=Pet']);
         $union = self::read(['union={card: Card, pix:Pix}']);
 
-        self::assertInstanceOf(TagFieldOptions::class, $array);
+        self::assertInstanceOf(FieldOptions::class, $array);
         self::assertInstanceOf(ArrayNode::class, $array->declared);
         self::assertInstanceOf(PrimitiveNode::class, $array->declared->items);
-        self::assertInstanceOf(TagFieldOptions::class, $map);
+        self::assertInstanceOf(FieldOptions::class, $map);
         self::assertInstanceOf(MapNode::class, $map->declared);
         self::assertInstanceOf(RefNode::class, $map->declared->values);
-        self::assertInstanceOf(TagFieldOptions::class, $union);
+        self::assertInstanceOf(FieldOptions::class, $union);
         self::assertInstanceOf(UnionNode::class, $union->declared);
         self::assertSame(['card', 'pix'], array_map(static fn($member): string => $member->key, $union->declared->members));
     }
@@ -80,7 +80,7 @@ final class TagArgumentsToOptionsTest extends TestCase
      * @param list<string> $arguments
      * @param list<string> $keys
      */
-    private static function read(array $arguments, string $keyword = 'field', array $keys = TagArgumentsToOptions::FIELD_KEYS): TagFieldOptions|Diagnostic
+    private static function read(array $arguments, string $keyword = 'field', array $keys = TagArgumentsToOptions::FIELD_KEYS): FieldOptions|Diagnostic
     {
         $tag = new CommentTag($keyword, $arguments, new SourceLocation('pets.php', 3));
 

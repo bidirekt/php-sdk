@@ -196,11 +196,7 @@ final class TagsToResources
         if ($node === null) {
             return new Diagnostic(sprintf('field "%s" in a handler\'s comment needs its type: declare it with "type=<type>"', $name), $tag->location);
         }
-        $node->nullable = $options->nullable ?? false;
-        $node->optional = $options->optional ?? false;
-        $node->description = $options->description;
-
-        return new Property($name, $node, $tag->location);
+        return $options->nodeToProperty($name, $node, $tag->location);
     }
 
     /**

@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Reader;
 
+use Bidirekt\PhpSdk\BidirektConsumer;
+use Bidirekt\PhpSdk\BidirektProvider;
+use Bidirekt\PhpSdk\BidirektSchema;
 use Bidirekt\PhpSdk\Model\Body;
 use Bidirekt\PhpSdk\Model\ConsumedResource;
 use Bidirekt\PhpSdk\Model\Contract;
@@ -25,10 +28,6 @@ use PhpParser\NodeFinder;
  */
 final class HandlersToResources
 {
-    public const PROVIDER_PARAMETERS = ['method', 'path', 'responses', 'request'];
-
-    public const CONSUMER_PARAMETERS = ['provider', 'method', 'path', 'responses', 'request'];
-
     private FieldsToProperties $declaredFields;
 
     public function __construct(
@@ -116,7 +115,7 @@ final class HandlersToResources
      */
     private function attributeToSchema(SdkAttribute $attribute, ParsedFile $file): array
     {
-        $arguments = $this->evaluator->argumentsToNamed($attribute->attribute->args, SdkAttributes::SCHEMA_PARAMETERS, '#[BidirektSchema]', $attribute->location, $file);
+        $arguments = $this->evaluator->argumentsToNamed($attribute->attribute->args, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location, $file);
         if (is_array($arguments)) {
             return [null, $arguments];
         }
@@ -153,9 +152,9 @@ final class HandlersToResources
     private function attributeToDeclarations(SdkAttribute $attribute, ParsedFile $file): Contract|array
     {
         $what = sprintf('#[%s]', $attribute->name);
-        $parameters = self::PROVIDER_PARAMETERS;
+        $parameters = SdkAttributes::classToParameters(BidirektProvider::class);
         if ($attribute->name === 'BidirektConsumer') {
-            $parameters = self::CONSUMER_PARAMETERS;
+            $parameters = SdkAttributes::classToParameters(BidirektConsumer::class);
         }
         $arguments = $this->evaluator->argumentsToNamed($attribute->attribute->args, $parameters, $what, $attribute->location, $file);
         if (is_array($arguments)) {

@@ -6,6 +6,8 @@ namespace Bidirekt\PhpSdk\Model;
 
 final class PrimitiveNode extends SchemaNode
 {
+    public const TYPES = ['string', 'integer', 'float', 'number', 'boolean'];
+
     /**
      * @param 'string'|'integer'|'float'|'number'|'boolean' $type
      */

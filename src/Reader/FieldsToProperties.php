@@ -70,11 +70,7 @@ final class FieldsToProperties
         if ($node === null) {
             return [new Diagnostic(sprintf('field "%s" in "fields" needs its type: declare "type" or "union"', $name), $field->location)];
         }
-        $node->nullable = $options->nullable ?? $node->nullable;
-        $node->optional = $options->optional ?? false;
-        $node->description = $options->description;
-
-        return new Property($name, $node, $field->location);
+        return $options->nodeToProperty($name, $node, $field->location);
     }
 
     private static function notAField(ConstantValue $value): Diagnostic

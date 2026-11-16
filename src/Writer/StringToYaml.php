@@ -10,7 +10,6 @@ namespace Bidirekt\PhpSdk\Writer;
  */
 final class StringToYaml
 {
-    private const INDENT_STEP = '  ';
     private const PLAIN_FORBIDDEN = '/^[\n\t ,[\]{}#&*!|>\'"%@`]|^[?-]$|^[?-][ \t]|[\n:][ \t]|[ \t]\n|[\n\t ]#|[\n\t :]$/D';
     private const OTHER_CORE_TYPES = [
         '/^(?:~|[Nn]ull|NULL)?$/D',
@@ -114,9 +113,6 @@ final class StringToYaml
         if ($multiLine) {
             return self::stringToBlock($value, $indent, $implicitKey);
         }
-        if ($implicitKey && $indent === self::INDENT_STEP && self::containsDocumentMarker($value)) {
-            return self::stringToQuoted($value, $indent, $implicitKey);
-        }
         foreach (self::OTHER_CORE_TYPES as $pattern) {
             if (preg_match($pattern, $value) === 1) {
                 return self::stringToQuoted($value, $indent, $implicitKey);
@@ -197,24 +193,13 @@ final class StringToYaml
         return (string) preg_replace('/\n+/', '$0' . $indent, $value);
     }
 
-    private static function containsDocumentMarker(string $value): bool
-    {
-        return preg_match('/(?:^|(?<=[\n\r\x{2028}\x{2029}]))(?:%|---|\.\.\.)/u', $value) === 1;
-    }
-
     /**
-     * What JavaScript's JSON.stringify writes for a string: only the quote, the backslash and
-     * the C0 controls are escaped.
+     * What JavaScript's JSON.stringify writes for a string: only the quote, the backslash and the C0 controls
+     * are escaped. Invalid UTF-8 becomes U+FFFD, as it does when the TS SDK reads the file as UTF-8.
      */
     private static function stringToJson(string $value): string
     {
-        $escapes = ['"' => '\\"', '\\' => '\\\\', "\x08" => '\\b', "\x0c" => '\\f', "\n" => '\\n', "\r" => '\\r', "\t" => '\\t'];
-
-        return '"' . preg_replace_callback(
-            '/[\x00-\x1f"\\\\]/',
-            static fn(array $match): string => $escapes[$match[0]] ?? sprintf('\\u%04x', ord($match[0])),
-            $value,
-        ) . '"';
+        return (string) json_encode($value, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_LINE_TERMINATORS | JSON_INVALID_UTF8_SUBSTITUTE);
     }
 
     private static function unicodeEscapeToYaml(string $code): string

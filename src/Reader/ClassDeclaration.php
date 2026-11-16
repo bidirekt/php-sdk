@@ -12,6 +12,5 @@ final class ClassDeclaration
         public string $name,
         public ClassLike $node,
         public ParsedFile $file,
-        public bool $inVendor,
     ) {}
 }

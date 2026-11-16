@@ -22,7 +22,6 @@ use PHPStan\PhpDocParser\Ast\Type\NullableTypeNode;
 use PHPStan\PhpDocParser\Ast\Type\ObjectShapeNode;
 use PHPStan\PhpDocParser\Ast\Type\TypeNode;
 use PHPStan\PhpDocParser\Ast\Type\UnionTypeNode;
-use ReflectionClass;
 
 /**
  * Translates a type, native or from a docblock, into the contract's schema node by the table of R5.
@@ -34,6 +33,11 @@ final class TypeToSchemaNode
     private const KEYWORDS = [
         'string', 'int', 'integer', 'bool', 'boolean', 'float', 'double', 'array', 'list', 'mixed', 'object',
         'iterable', 'callable', 'void', 'never', 'null', 'false', 'true', 'parent', 'resource', 'scalar', 'numeric',
+    ];
+
+    private const NATIVE_KEYWORDS = [
+        'string', 'int', 'bool', 'float', 'array', 'mixed', 'object', 'iterable', 'callable', 'void', 'never', 'null',
+        'false', 'true', 'parent',
     ];
 
     public function __construct(
@@ -101,7 +105,7 @@ final class TypeToSchemaNode
         if ($lookup->declaration !== null) {
             return $this->declarationToSchemaNode($lookup->declaration, $location, $form);
         }
-        if (self::isBuiltIn($class)) {
+        if (ClassIndex::isBuiltIn($class, true)) {
             return [self::untranslatable($written, $location, $form)];
         }
 
@@ -156,7 +160,7 @@ final class TypeToSchemaNode
      */
     private function membersToNode(array $members, TypeNode $whole, TypeContext $context): SchemaNode|array
     {
-        $classes = self::membersToClasses($members);
+        $classes = self::membersToClasses($members, $context->written);
         if ($context->union !== null && $classes !== null) {
             return $this->classesToDeclaredUnion($classes, $context->union, $context);
         }
@@ -216,8 +220,11 @@ final class TypeToSchemaNode
         if (isset(self::PRIMITIVES[$name])) {
             return new PrimitiveNode(self::PRIMITIVES[$name]);
         }
-        if ($name === 'self' || $name === 'static') {
-            return $this->declarationToSchemaNode($context->owner, $context->location, $context->form);
+        if ($name === 'self') {
+            return $this->declarationToSchemaNode($context->scope->selfClass, $context->location, $context->form);
+        }
+        if ($name === 'static') {
+            return $this->declarationToSchemaNode($context->scope->staticClass, $context->location, $context->form);
         }
         if ($name === 'array') {
             return [new Diagnostic(
@@ -225,7 +232,7 @@ final class TypeToSchemaNode
                 $context->location,
             )];
         }
-        if (self::isKeyword($identifier)) {
+        if (self::isKeyword($identifier, $context->written)) {
             return [self::untranslatable($text, $context->location, $context->form)];
         }
 
@@ -282,11 +289,11 @@ final class TypeToSchemaNode
      * @param list<TypeNode> $members
      * @return list<IdentifierTypeNode>|null the members when every one names a class
      */
-    private static function membersToClasses(array $members): ?array
+    private static function membersToClasses(array $members, WrittenType $written): ?array
     {
         $classes = [];
         foreach ($members as $member) {
-            if (!$member instanceof IdentifierTypeNode || (self::isKeyword($member) && !in_array(strtolower($member->name), ['self', 'static'], true))) {
+            if (!$member instanceof IdentifierTypeNode || (self::isKeyword($member, $written) && !in_array(strtolower($member->name), ['self', 'static'], true))) {
                 return null;
             }
             $classes[] = $member;
@@ -393,20 +400,15 @@ final class TypeToSchemaNode
         return false;
     }
 
-    private static function isKeyword(IdentifierTypeNode $identifier): bool
+    private static function isKeyword(IdentifierTypeNode $identifier, WrittenType $written): bool
     {
         $name = strtolower($identifier->name);
-
-        return str_contains($name, '-') || in_array($name, [...self::KEYWORDS, 'self', 'static'], true);
-    }
-
-    private static function isBuiltIn(string $class): bool
-    {
-        if (!class_exists($class, false) && !interface_exists($class, false)) {
-            return false;
+        $keywords = self::KEYWORDS;
+        if ($written->native) {
+            $keywords = self::NATIVE_KEYWORDS;
         }
 
-        return (new ReflectionClass($class))->isInternal();
+        return str_contains($name, '-') || in_array($name, [...$keywords, 'self', 'static'], true);
     }
 
     private static function shape(string $kind, string $text, TypeContext $context): Diagnostic

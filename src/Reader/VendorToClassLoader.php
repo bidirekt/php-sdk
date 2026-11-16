@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Bidirekt\PhpSdk\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
+use Composer\Autoload\ClassLoader;
 use Bidirekt\PhpSdk\Model\SourceLocation;
 use PhpParser\ConstExprEvaluationException;
 use PhpParser\ConstExprEvaluator;
@@ -21,30 +22,47 @@ use PhpParser\Node\Stmt\Return_;
 use PhpParser\ParserFactory;
 
 /**
- * Reads the maps Composer generates in `vendor/composer/` as data: the files are parsed and their
- * `$vendorDir . '…'` / `$baseDir . '…'` expressions evaluated, never included.
+ * Reads the maps Composer generates in `vendor/composer/` as data into a class loader that is never
+ * registered, only asked for files: the maps are parsed and their `$vendorDir . '…'` / `$baseDir . '…'`
+ * expressions evaluated, never included.
  */
-final class VendorToAutoloadMaps
+final class VendorToClassLoader
 {
     /**
-     * @return AutoloadMaps|Diagnostic|null null when the vendor folder is not installed
+     * @return ClassLoader|Diagnostic|null null when the vendor folder is not installed
      */
-    public static function vendorToAutoloadMaps(string $vendorDirectory): AutoloadMaps|Diagnostic|null
+    public static function vendorToClassLoader(string $vendorDirectory): ClassLoader|Diagnostic|null
     {
         $composerDirectory = $vendorDirectory . '/composer';
         if (!is_dir($composerDirectory)) {
             return null;
         }
-        $maps = [];
-        foreach (['autoload_psr4.php', 'autoload_namespaces.php', 'autoload_classmap.php'] as $name) {
-            $map = self::mapFileToArray($composerDirectory . '/' . $name);
-            if ($map instanceof Diagnostic) {
-                return $map;
-            }
-            $maps[] = $map;
+        $loader = new ClassLoader();
+        $psr4 = self::mapFileToArray($composerDirectory . '/autoload_psr4.php');
+        if ($psr4 instanceof Diagnostic) {
+            return $psr4;
         }
+        foreach (self::arrayToDirectories($psr4) as $prefix => $directories) {
+            if ($prefix !== '' && !str_ends_with($prefix, '\\')) {
+                return self::unreadable($composerDirectory . '/autoload_psr4.php');
+            }
+            $loader->setPsr4($prefix, $directories);
+        }
+        $psr0 = self::mapFileToArray($composerDirectory . '/autoload_namespaces.php');
+        if ($psr0 instanceof Diagnostic) {
+            return $psr0;
+        }
+        foreach (self::arrayToDirectories($psr0) as $prefix => $directories) {
+            $loader->set($prefix, $directories);
+        }
+        $classmap = self::mapFileToArray($composerDirectory . '/autoload_classmap.php');
+        if ($classmap instanceof Diagnostic) {
+            return $classmap;
+        }
+        // A classmap entry whose file is missing is left out, so the class is looked up by PSR-4 and PSR-0.
+        $loader->addClassMap(array_filter(self::arrayToFiles($classmap), 'is_file'));
 
-        return new AutoloadMaps(self::arrayToDirectories($maps[0]), self::arrayToDirectories($maps[1]), self::arrayToFiles($maps[2]));
+        return $loader;
     }
 
     /**
@@ -55,7 +73,7 @@ final class VendorToAutoloadMaps
         if (!is_file($file)) {
             return [];
         }
-        $unreadable = new Diagnostic('cannot read the Composer autoload map: run composer install again', new SourceLocation($file, 1));
+        $unreadable = self::unreadable($file);
         try {
             $statements = (new ParserFactory())->createForNewestSupportedVersion()->parse((string) file_get_contents($file)) ?? [];
             $variables = [];
@@ -77,6 +95,11 @@ final class VendorToAutoloadMaps
         }
 
         return $unreadable;
+    }
+
+    private static function unreadable(string $file): Diagnostic
+    {
+        return new Diagnostic('cannot read the Composer autoload map: run composer install again', new SourceLocation($file, 1));
     }
 
     /**

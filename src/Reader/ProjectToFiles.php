@@ -4,26 +4,28 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Reader;
 
+use Bidirekt\PhpSdk\Model\Diagnostic;
+use Bidirekt\PhpSdk\Model\SourceLocation;
+
 final class ProjectToFiles
 {
     private const EXCLUDED_FOLDER_NAMES = ['vendor', 'node_modules'];
 
     /**
      * The project's `.php` files and those of the packages Composer installed from a `path` repository
-     * outside the vendor folder, in byte order.
-     *
-     * @return list<string>
+     * outside the vendor folder.
      */
-    public static function projectToFiles(Project $project): array
+    public static function projectToFiles(Project $project): ProjectFiles
     {
+        $warnings = [];
         $packages = self::composerToPathPackages($project->composer);
         $excluded = $packages;
         if ($project->composer !== null) {
             array_push($excluded, $project->composer->vendorDirectory, ...$project->composer->devPaths);
         }
-        $files = self::directoryToPhpFiles($project->directory, self::pathsToReal($excluded));
+        $files = self::directoryToPhpFiles($project->directory, self::pathsToReal($excluded), $warnings);
         foreach ($packages as $package) {
-            $files = array_merge($files, self::packageToPhpFiles($package));
+            $files = array_merge($files, self::packageToPhpFiles($package, $warnings));
         }
         $unique = [];
         foreach ($files as $file) {
@@ -32,13 +34,14 @@ final class ProjectToFiles
         $sorted = array_values($unique);
         sort($sorted, SORT_STRING);
 
-        return $sorted;
+        return new ProjectFiles($sorted, $warnings);
     }
 
     /**
+     * @param list<Diagnostic> $warnings
      * @return list<string>
      */
-    private static function packageToPhpFiles(string $package): array
+    private static function packageToPhpFiles(string $package, array &$warnings): array
     {
         $excluded = [];
         if (is_file($package . '/composer.json')) {
@@ -48,23 +51,26 @@ final class ProjectToFiles
             }
         }
 
-        return self::directoryToPhpFiles($package, self::pathsToReal($excluded));
+        return self::directoryToPhpFiles($package, self::pathsToReal($excluded), $warnings);
     }
 
     /**
      * @param list<string> $excluded real paths
+     * @param list<Diagnostic> $warnings
      * @param array<string, true> $visited real paths, so a symlink loop is read once
      * @return list<string>
      */
-    private static function directoryToPhpFiles(string $directory, array $excluded, array &$visited = []): array
+    private static function directoryToPhpFiles(string $directory, array $excluded, array &$warnings, array &$visited = []): array
     {
         $real = realpath($directory);
         if ($real === false || isset($visited[$real])) {
             return [];
         }
         $visited[$real] = true;
-        $entries = scandir($directory);
+        $entries = @scandir($directory);
         if ($entries === false) {
+            $warnings[] = new Diagnostic('cannot read the folder, so its files are not read: check that it can be read', new SourceLocation($directory));
+
             return [];
         }
         $files = [];
@@ -80,7 +86,7 @@ final class ProjectToFiles
                 if (str_starts_with($entry, '.') || in_array($entry, self::EXCLUDED_FOLDER_NAMES, true)) {
                     continue;
                 }
-                $files = array_merge($files, self::directoryToPhpFiles($path, $excluded, $visited));
+                $files = array_merge($files, self::directoryToPhpFiles($path, $excluded, $warnings, $visited));
 
                 continue;
             }

@@ -9,7 +9,7 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 final class DiagnosticsToText
 {
     /**
-     * One line per diagnostic, `<file>:<line> [warning: ]<message>`, errors and warnings sorted together by
+     * One line per diagnostic, `<file>[:<line>] [warning: ]<message>`, errors and warnings sorted together by
      * file (byte order) and line, with the file relative to the cwd.
      *
      * @param list<Diagnostic> $errors
@@ -38,8 +38,12 @@ final class DiagnosticsToText
         if ($diagnostic->location === null) {
             return $prefix . $diagnostic->message . "\n";
         }
+        $place = PathToShown::pathToShown($diagnostic->location->file, $cwd);
+        if ($diagnostic->location->line !== null) {
+            $place .= ':' . $diagnostic->location->line;
+        }
 
-        return sprintf("%s:%d %s%s\n", PathToShown::pathToShown($diagnostic->location->file, $cwd), $diagnostic->location->line, $prefix, $diagnostic->message);
+        return sprintf("%s %s%s\n", $place, $prefix, $diagnostic->message);
     }
 
     private static function compareDiagnostics(Diagnostic $a, Diagnostic $b): int

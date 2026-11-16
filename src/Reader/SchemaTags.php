@@ -13,6 +13,9 @@ use PhpParser\Node;
  */
 final class SchemaTags
 {
+    /** @var array<int, true> ids of the files whose tags are read */
+    private array $readFiles = [];
+
     /**
      * @param array<int, CommentTag> $schemas
      * @param array<int, CommentTag> $fields
@@ -25,6 +28,32 @@ final class SchemaTags
         public array $errors = [],
         public array $warnings = [],
     ) {}
+
+    /**
+     * @param list<ParsedFile> $files the files whose tags these are
+     */
+    public function addReadFiles(array $files): void
+    {
+        foreach ($files as $file) {
+            $this->readFiles[spl_object_id($file)] = true;
+        }
+    }
+
+    /**
+     * Reads the tags of a file outside the project, like a parent's in vendor/, once one of its classes is read.
+     */
+    public function addFile(ParsedFile $file): void
+    {
+        if (isset($this->readFiles[spl_object_id($file)])) {
+            return;
+        }
+        $this->readFiles[spl_object_id($file)] = true;
+        $tagged = FilesToTaggedComments::filesToTaggedComments([$file]);
+        $read = CommentsToSchemaTags::commentsToSchemaTags($tagged->comments);
+        $this->schemas += $read->schemas;
+        $this->fields += $read->fields;
+        array_push($this->errors, ...$tagged->errors, ...$read->errors);
+    }
 
     public function schemaTag(Node $element): ?CommentTag
     {

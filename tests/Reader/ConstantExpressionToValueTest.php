@@ -153,18 +153,19 @@ final class ConstantExpressionToValueTest extends TestCase
     private function evaluate(ParsedFile $file): AttributeArguments|array
     {
         $parser = new PhpFileToParsed();
-        $files = [$file];
+        $classes = new ClassIndex($parser, null);
+        $classes->addParsedFile($file);
         foreach (['Codes.php', 'Loop.php'] as $other) {
             if (is_file($this->root . '/' . $other)) {
                 $parsed = $parser->fileToParsed($this->root . '/' . $other);
                 self::assertInstanceOf(ParsedFile::class, $parsed);
-                $files[] = $parsed;
+                $classes->addParsedFile($parsed);
             }
         }
         $attribute = (new NodeFinder())->findFirstInstanceOf($file->statements, Attribute::class);
         self::assertInstanceOf(Attribute::class, $attribute);
 
-        return (new ConstantExpressionToValue(new ClassIndex($files, $parser, null, false)))
+        return (new ConstantExpressionToValue($classes))
             ->argumentsToNamed($attribute->args, self::PARAMETERS, '#[Handler]', $file->locationOf($attribute), $file);
     }
 

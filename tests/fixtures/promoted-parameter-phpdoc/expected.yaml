@@ -15,7 +15,3 @@ schemas:
         type: array
         items:
           type: number
-      checks:
-        type: array
-        items:
-          type: boolean

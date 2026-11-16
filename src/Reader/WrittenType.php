@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Reader;
 
+use PhpParser\NameContext;
 use PHPStan\PhpDocParser\Ast\AbstractNodeVisitor;
 use PHPStan\PhpDocParser\Ast\Attribute;
 use PHPStan\PhpDocParser\Ast\Node;
@@ -21,11 +22,13 @@ final class WrittenType
 {
     /**
      * @param list<array{string, int, int}> $tokens the lexer tokens the node's index attributes point at
+     * @param bool $native whether it is a native type, where only PHP's own keywords are not class names
      */
     public function __construct(
         public TypeNode $node,
         private array $tokens,
-        private NameScope $scope,
+        private NameContext $names,
+        public bool $native = false,
     ) {}
 
     /**
@@ -48,7 +51,7 @@ final class WrittenType
 
     public function classNameToFullyQualified(string $written): string
     {
-        return $this->scope->classNameToFullyQualified($written);
+        return NameContextVisitor::classNameToFullyQualified($this->names, $written);
     }
 
     /**
@@ -56,15 +59,15 @@ final class WrittenType
      */
     public function typeToResolvedText(): string
     {
-        $resolver = new class ($this->scope) extends AbstractNodeVisitor {
+        $resolver = new class ($this->names) extends AbstractNodeVisitor {
             public function __construct(
-                private NameScope $scope,
+                private NameContext $names,
             ) {}
 
             public function enterNode(Node $node): ?Node
             {
                 if ($node instanceof IdentifierTypeNode) {
-                    $node->name = $this->scope->classNameToFullyQualified($node->name);
+                    $node->name = NameContextVisitor::classNameToFullyQualified($this->names, $node->name);
                 }
 
                 return null;

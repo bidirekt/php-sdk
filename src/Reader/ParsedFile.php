@@ -14,6 +14,7 @@ use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\EnumCase;
 use PhpParser\Node\Stmt\Function_;
+use PhpParser\NodeFinder;
 use PhpParser\Token;
 
 final class ParsedFile
@@ -55,25 +56,18 @@ final class ParsedFile
     }
 
     /**
-     * The docblock of an element, written above its attributes or between them and the element.
+     * @return list<ClassDeclaration> the named class-likes, in the order they are written
      */
-    public function docCommentOf(Stmt\Property|Param|ClassMethod $node): ?string
+    public function classDeclarations(): array
     {
-        $found = $node->getDocComment()?->getText();
-        if ($node->attrGroups === []) {
-            return $found;
-        }
-        for ($position = $node->attrGroups[count($node->attrGroups) - 1]->getEndTokenPos() + 1; isset($this->tokens[$position]); $position++) {
-            $token = $this->tokens[$position];
-            if ($token->id === T_DOC_COMMENT) {
-                $found = $token->text;
-            }
-            if (!$token->isIgnorable()) {
-                break;
+        $declarations = [];
+        foreach ((new NodeFinder())->findInstanceOf($this->statements, ClassLike::class) as $node) {
+            if ($node->namespacedName !== null) {
+                $declarations[] = new ClassDeclaration($node->namespacedName->toString(), $node, $this);
             }
         }
 
-        return $found;
+        return $declarations;
     }
 
     private function lineOf(Node $node): int

@@ -6,67 +6,48 @@ namespace Bidirekt\PhpSdk\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
-use PhpParser\Node\Stmt\ClassLike;
-use PhpParser\NodeFinder;
+use Composer\Autoload\ClassLoader;
+use ReflectionClass;
 
 final class ClassIndex
 {
-    /** @var array<string, list<ClassDeclaration>> lowercase name => declarations in the project files */
+    /** @var array<string, list<DeclaredClass>> lowercase name => where the project files declare it */
     private array $project = [];
 
-    /** @var array<string, list<ClassDeclaration>> lowercase name => declarations in the vendor files read so far */
-    private array $vendor = [];
-
-    /** @var array<string, ParsedFile|Diagnostic> */
-    private array $vendorFiles = [];
+    /** @var array<string, array<string, ClassDeclaration>|Diagnostic> real path => lowercase name => declaration, for the files read so far */
+    private array $files = [];
 
     /** @var array<string, list<Diagnostic>> */
     private array $duplicateErrors = [];
 
+    private bool $vendorRead = false;
+
+    private ClassLoader|Diagnostic|null $vendor = null;
+
     /**
-     * @param list<ParsedFile> $files
-     * @param bool $vendorMissing a Composer project whose vendor folder is not installed
+     * @param string|null $vendorDirectory the Composer project's vendor folder, null without a `composer.json`
      */
     public function __construct(
-        array $files,
         private PhpFileToParsed $parser,
-        private ?ClassLocator $locator,
-        private bool $vendorMissing,
-    ) {
-        foreach ($files as $file) {
-            foreach (self::fileToDeclarations($file, false) as $declaration) {
-                $this->project[strtolower($declaration->name)][] = $declaration;
-            }
+        private ?string $vendorDirectory,
+    ) {}
+
+    public function addParsedFile(ParsedFile $file): void
+    {
+        foreach ($file->classDeclarations() as $declaration) {
+            $this->project[strtolower($declaration->name)][] = new DeclaredClass($declaration->name, $file->locationOf($declaration->node));
         }
+        $this->files[self::pathToKey($file->path)] = self::parsedToDeclarations($file);
     }
 
     /**
-     * @param list<ParsedFile> $files
+     * @param list<DeclaredClass> $classes of a project file read again when one of them is looked up
      */
-    public static function projectToIndex(Project $project, PhpFileToParsed $parser, array $files): self|Diagnostic
+    public function addDeclaredClasses(array $classes): void
     {
-        if ($project->composer === null) {
-            return new self($files, $parser, null, false);
+        foreach ($classes as $class) {
+            $this->project[strtolower($class->name)][] = $class;
         }
-        $maps = VendorToAutoloadMaps::vendorToAutoloadMaps($project->composer->vendorDirectory);
-        if ($maps instanceof Diagnostic) {
-            return $maps;
-        }
-        if ($maps === null) {
-            return new self($files, $parser, null, true);
-        }
-
-        return new self($files, $parser, new ClassLocator($maps), false);
-    }
-
-    /**
-     * Every declaration of the class in the project files, the duplicates included.
-     *
-     * @return list<ClassDeclaration>
-     */
-    public function projectDeclarations(string $class): array
-    {
-        return $this->project[strtolower(ltrim($class, '\\'))] ?? [];
     }
 
     /**
@@ -78,85 +59,98 @@ final class ClassIndex
     {
         $class = ltrim($class, '\\');
         $key = strtolower($class);
-        $declarations = $this->project[$key] ?? [];
-        if (count($declarations) === 1) {
-            return new ClassLookup($declarations[0]);
+        $declared = $this->project[$key] ?? [];
+        if (count($declared) === 1) {
+            return $this->fileLookup((string) $declared[0]->location->file, $key);
         }
-        if (count($declarations) > 1) {
-            $this->duplicateErrors[$key] ??= self::duplicatesToErrors($declarations);
+        if (count($declared) > 1) {
+            $this->duplicateErrors[$key] ??= self::duplicatesToErrors($declared);
 
             return new ClassLookup(null, $this->duplicateErrors[$key]);
         }
-        if ($this->vendorMissing) {
+        if ($this->vendorDirectory === null) {
+            return new ClassLookup(null);
+        }
+        if (!$this->vendorRead) {
+            $this->vendor = VendorToClassLoader::vendorToClassLoader($this->vendorDirectory);
+            $this->vendorRead = true;
+        }
+        if ($this->vendor === null) {
             return new ClassLookup(null, [new Diagnostic(
                 sprintf('cannot find class "%s" in the project, and the vendor folder is not installed: run composer install', $class),
                 $usedAt,
             )]);
         }
-
-        return $this->vendorLookup($class, $key);
-    }
-
-    private function vendorLookup(string $class, string $key): ClassLookup
-    {
-        if (!isset($this->vendor[$key])) {
-            $file = $this->locator?->classToFile($class);
-            if ($file === null) {
-                return new ClassLookup(null);
-            }
-            $parsed = $this->vendorFile($file);
-            if ($parsed instanceof Diagnostic) {
-                return new ClassLookup(null, [$parsed]);
-            }
+        if ($this->vendor instanceof Diagnostic) {
+            return new ClassLookup(null, [$this->vendor]);
         }
-        $declaration = $this->vendor[$key][0] ?? null;
-
-        return new ClassLookup($declaration);
-    }
-
-    private function vendorFile(string $file): ParsedFile|Diagnostic
-    {
-        $real = (string) realpath($file);
-        if (isset($this->vendorFiles[$real])) {
-            return $this->vendorFiles[$real];
-        }
-        $parsed = $this->parser->fileToParsed($file);
-        $this->vendorFiles[$real] = $parsed;
-        if ($parsed instanceof ParsedFile) {
-            foreach (self::fileToDeclarations($parsed, true) as $declaration) {
-                $this->vendor[strtolower($declaration->name)][] = $declaration;
-            }
+        $file = $this->vendor->findFile($class);
+        if ($file === false) {
+            return new ClassLookup(null);
         }
 
-        return $parsed;
+        return $this->fileLookup($file, $key);
     }
 
     /**
-     * @return list<ClassDeclaration>
+     * Whether PHP itself declares the class, or the interface when interfaces are asked for.
      */
-    private static function fileToDeclarations(ParsedFile $file, bool $inVendor): array
+    public static function isBuiltIn(string $class, bool $orInterface): bool
     {
+        if (!class_exists($class, false) && (!$orInterface || !interface_exists($class, false))) {
+            return false;
+        }
+
+        return (new ReflectionClass($class))->isInternal();
+    }
+
+    private function fileLookup(string $path, string $key): ClassLookup
+    {
+        $declarations = $this->files[self::pathToKey($path)] ??= self::parsedToDeclarations($this->parser->fileToParsed($path));
+        if ($declarations instanceof Diagnostic) {
+            return new ClassLookup(null, [$declarations]);
+        }
+
+        return new ClassLookup($declarations[$key] ?? null);
+    }
+
+    /**
+     * @return array<string, ClassDeclaration>|Diagnostic lowercase name => its first declaration in the file
+     */
+    private static function parsedToDeclarations(ParsedFile|Diagnostic $parsed): array|Diagnostic
+    {
+        if ($parsed instanceof Diagnostic) {
+            return $parsed;
+        }
         $declarations = [];
-        foreach ((new NodeFinder())->findInstanceOf($file->statements, ClassLike::class) as $node) {
-            if ($node->namespacedName !== null) {
-                $declarations[] = new ClassDeclaration($node->namespacedName->toString(), $node, $file, $inVendor);
-            }
+        foreach ($parsed->classDeclarations() as $declaration) {
+            $declarations[strtolower($declaration->name)] ??= $declaration;
         }
 
         return $declarations;
     }
 
+    private static function pathToKey(string $path): string
+    {
+        $real = realpath($path);
+        if ($real === false) {
+            return $path;
+        }
+
+        return $real;
+    }
+
     /**
-     * @param list<ClassDeclaration> $declarations
+     * @param list<DeclaredClass> $declared
      * @return list<Diagnostic>
      */
-    private static function duplicatesToErrors(array $declarations): array
+    private static function duplicatesToErrors(array $declared): array
     {
         $errors = [];
-        foreach ($declarations as $declaration) {
+        foreach ($declared as $class) {
             $errors[] = new Diagnostic(
-                sprintf('class "%s" is declared in more than one file generate reads: keep a single declaration', $declaration->name),
-                $declaration->file->locationOf($declaration->node),
+                sprintf('class "%s" is declared in more than one file generate reads: keep a single declaration', $class->name),
+                $class->location,
             );
         }
 

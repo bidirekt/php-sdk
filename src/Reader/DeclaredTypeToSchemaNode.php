@@ -20,8 +20,6 @@ use Bidirekt\PhpSdk\Model\UnionNode;
  */
 final class DeclaredTypeToSchemaNode
 {
-    private const PRIMITIVES = ['string', 'integer', 'float', 'number', 'boolean'];
-
     private const NESTED_KEYS = ['type', 'items', 'values', 'nullable', 'union'];
 
     public function __construct(
@@ -152,7 +150,7 @@ final class DeclaredTypeToSchemaNode
                 $value->location,
             )];
         }
-        if (in_array($type, self::PRIMITIVES, true)) {
+        if (in_array($type, PrimitiveNode::TYPES, true)) {
             return new PrimitiveNode($type);
         }
         if ($type === 'array' || $type === 'map') {

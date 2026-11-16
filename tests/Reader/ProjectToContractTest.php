@@ -6,6 +6,7 @@ namespace Bidirekt\PhpSdk\Tests\Reader;
 
 use Bidirekt\PhpSdk\Model\Contract;
 use Bidirekt\PhpSdk\Model\Diagnostic;
+use Bidirekt\PhpSdk\Model\NamedSchema;
 use Bidirekt\PhpSdk\Model\SourceLocation;
 use Bidirekt\PhpSdk\Reader\DirectoryToProject;
 use Bidirekt\PhpSdk\Reader\Project;
@@ -49,6 +50,26 @@ final class ProjectToContractTest extends TestCase
         self::assertEquals(new ReadResult(new Contract(), [], [
             new Diagnostic('#[BidirektField] resolves to "App\\BidirektField", so it is not read: write use Bidirekt\\PhpSdk\\BidirektField', new SourceLocation($this->root . '/src/Pet.php', 6)),
         ]), $this->read());
+    }
+
+    public function testReadsAClassFromAFileThatDoesNotMentionTheSdkWhenItIsLookedUp(): void
+    {
+        $this->write('src/Pet.php', "<?php\nnamespace App;\n\nuse Bidirekt\\PhpSdk\\BidirektField;\nuse Bidirekt\\PhpSdk\\BidirektSchema;\n\n#[BidirektSchema]\nfinal class Pet\n{\n    #[BidirektField]\n    public Status \$status;\n}\n");
+        $this->write('src/Status.php', "<?php\nnamespace App;\n\nenum Status: string\n{\n    case Sold = 'sold';\n}\n");
+
+        $result = $this->read();
+
+        self::assertSame([], $result->errors);
+        self::assertSame(['Pet', 'Status'], array_map(static fn(NamedSchema $schema): string => $schema->name, $result->contract->schemas));
+    }
+
+    public function testReadsTheDocblockAboveTheAttributesOnly(): void
+    {
+        $this->write('pet.php', "<?php\n\nuse Bidirekt\\PhpSdk\\BidirektField;\nuse Bidirekt\\PhpSdk\\BidirektSchema;\n\n#[BidirektSchema]\nfinal class Pet\n{\n    #[BidirektField]\n    /** @var list<string> */\n    public array \$tags;\n}\n");
+
+        self::assertEquals([
+            new Diagnostic("cannot translate \"array\" without the type of its items: write @var list<T> or array<string, T>, or declare it with #[BidirektField(type: 'array', items: …)]", new SourceLocation($this->root . '/pet.php', 11)),
+        ], $this->read()->errors);
     }
 
     private function read(): ReadResult

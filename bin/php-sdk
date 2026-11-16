@@ -4,8 +4,31 @@
 declare(strict_types=1);
 
 use Bidirekt\PhpSdk\Command\GenerateCommand;
+use Composer\Autoload\ClassLoader;
 
-require $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+// The project is never loaded: vendor/autoload.php would run the `autoload.files` of the project and its
+// packages, so only Composer's class maps, which just return arrays, are read to load the SDK's classes.
+/** @var string $autoloadPath */
+$autoloadPath = $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+$vendorDirectory = dirname($autoloadPath);
+if (!class_exists(ClassLoader::class, false)) {
+    require $vendorDirectory . '/composer/ClassLoader.php';
+}
+/** @var array<string, list<string>> $psr4 */
+$psr4 = require $vendorDirectory . '/composer/autoload_psr4.php';
+/** @var array<string, list<string>> $psr0 */
+$psr0 = require $vendorDirectory . '/composer/autoload_namespaces.php';
+/** @var array<string, string> $classmap */
+$classmap = require $vendorDirectory . '/composer/autoload_classmap.php';
+$loader = new ClassLoader($vendorDirectory);
+foreach ($psr4 as $prefix => $directories) {
+    $loader->setPsr4($prefix, $directories);
+}
+foreach ($psr0 as $prefix => $directories) {
+    $loader->set($prefix, $directories);
+}
+$loader->addClassMap($classmap);
+$loader->register();
 
 $result = GenerateCommand::runCommand(
     array_values(array_filter(array_slice((array) ($_SERVER['argv'] ?? []), 1), 'is_string')),

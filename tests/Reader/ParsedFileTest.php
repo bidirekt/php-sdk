@@ -107,35 +107,7 @@ final class ParsedFileTest extends TestCase
         self::assertSame($this->file, $parsed->lineToLocation(3)->file);
     }
 
-    public function testReadsTheDocblockAboveTheAttributesOrBetweenThemAndTheElement(): void
-    {
-        file_put_contents($this->file, <<<'PHP'
-            <?php
-
-            final class Pet
-            {
-                /** @var list<int> */
-                #[BidirektField]
-                public array $above;
-
-                #[BidirektField]
-                /** @var list<string> */
-                public array $below;
-
-                public array $none;
-            }
-            PHP);
-        $parsed = (new PhpFileToParsed())->fileToParsed($this->file);
-        self::assertInstanceOf(ParsedFile::class, $parsed);
-        $properties = (new NodeFinder())->findInstanceOf($parsed->statements, Property::class);
-
-        self::assertSame(
-            ['/** @var list<int> */', '/** @var list<string> */', null],
-            array_map(static fn(Property $property): ?string => $parsed->docCommentOf($property), $properties),
-        );
-    }
-
-    private function lineOf(ParsedFile $parsed, ?Node $node): int
+    private function lineOf(ParsedFile $parsed, ?Node $node): ?int
     {
         self::assertNotNull($node);
         $location = $parsed->locationOf($node);

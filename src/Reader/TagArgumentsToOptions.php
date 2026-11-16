@@ -21,8 +21,6 @@ final class TagArgumentsToOptions
 {
     public const FIELD_KEYS = ['type', 'items', 'values', 'name', 'optional', 'nullable', 'description', 'union'];
 
-    private const PRIMITIVES = ['string', 'integer', 'float', 'number', 'boolean'];
-
     private const USAGES = [
         'type' => '"type=" followed by string, integer, float, number, boolean, a schema name, array or map',
         'items' => '"items=" followed by string, integer, float, number, boolean or a schema name',
@@ -42,12 +40,12 @@ final class TagArgumentsToOptions
      * @param list<string> $arguments
      * @param list<string> $keys the keys the tag takes
      */
-    public static function argumentsToOptions(CommentTag $tag, array $arguments, array $keys): TagFieldOptions|Diagnostic
+    public static function argumentsToOptions(CommentTag $tag, array $arguments, array $keys): FieldOptions|Diagnostic
     {
         if ($tag->error !== null) {
             return $tag->error;
         }
-        $options = new TagFieldOptions();
+        $options = new FieldOptions();
         $values = [];
         foreach ($arguments as $argument) {
             $separator = strpos($argument, '=');
@@ -175,7 +173,7 @@ final class TagArgumentsToOptions
 
     private static function leafToNode(string $value): SchemaNode
     {
-        if (in_array($value, self::PRIMITIVES, true)) {
+        if (in_array($value, PrimitiveNode::TYPES, true)) {
             return new PrimitiveNode($value);
         }
 
@@ -208,9 +206,8 @@ final class TagArgumentsToOptions
         if (count($keys) === 1) {
             return self::USAGES[$keys[0]] ?? '';
         }
-        $last = array_pop($keys);
 
-        return sprintf('"<key>=<value>" with key %s or %s', implode(', ', $keys), $last);
+        return sprintf('"<key>=<value>" with key %s', NamesToChoice::namesToChoice($keys));
     }
 
     private static function unreadable(string $argument, CommentTag $tag, string $usage): Diagnostic

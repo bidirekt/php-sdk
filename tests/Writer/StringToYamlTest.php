@@ -57,6 +57,8 @@ final class StringToYamlTest extends TestCase
             'delete is forced into double quotes but not escaped' => ["\x7f", "\"\x7f\""],
             'next line' => ["\u{85}x", "\"\u{85}x\""],
             'carriage return' => ["a\rb", '"a\rb"'],
+            'slash and non-ASCII are not escaped' => ["a/\u{e9}: \x01", "\"a/\u{e9}: \\x01\""],
+            'invalid UTF-8 is replaced' => ["\xff: x", "\"\u{fffd}: x\""],
             'line break' => ["a\nb", "|-\n    a\n    b"],
             'trailing line break' => ["a\n", "|\n    a"],
             'trailing line breaks' => ["a\n\n", "|+\n    a\n"],
@@ -112,12 +114,6 @@ final class StringToYamlTest extends TestCase
     public function testWritesAKeyAsTheYamlLibraryDoes(string $key, string $expected): void
     {
         self::assertSame($expected, StringToYaml::stringToYaml($key, self::INDENT, true));
-    }
-
-    public function testQuotesADocumentMarkerOnlyInATopLevelKey(): void
-    {
-        self::assertSame('"--- x"', StringToYaml::stringToYaml('--- x', '  ', true));
-        self::assertSame('--- x', StringToYaml::stringToYaml('--- x', self::INDENT, true));
     }
 
     public function testCountsLengthInUtf16CodeUnits(): void

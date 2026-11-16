@@ -6,6 +6,7 @@ namespace Bidirekt\PhpSdk\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
+use PhpParser\NameContext;
 use PHPStan\PhpDocParser\Ast\PhpDoc\InvalidTagValueNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\ParamTagValueNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\VarTagValueNode;
@@ -37,7 +38,7 @@ final class PhpDocToWrittenType
         $this->docParser = new PhpDocParser($config, $this->typeParser, $constants);
     }
 
-    public function textToWrittenType(string $text, NameScope $scope): ?WrittenType
+    public function textToWrittenType(string $text, NameContext $names): ?WrittenType
     {
         $tokens = $this->lexer->tokenize($text);
         $iterator = new TokenIterator($tokens);
@@ -48,13 +49,13 @@ final class PhpDocToWrittenType
             return null;
         }
 
-        return new WrittenType($node, $tokens, $scope);
+        return new WrittenType($node, $tokens, $names, true);
     }
 
     /**
      * The type of the `@var` that describes the member: one naming its variable, or else one naming none.
      */
-    public function docToVarType(?string $doc, string $member, NameScope $scope, SourceLocation $location): WrittenType|Diagnostic|null
+    public function docToVarType(?string $doc, string $member, NameContext $names, SourceLocation $location): WrittenType|Diagnostic|null
     {
         if ($doc === null) {
             return null;
@@ -76,10 +77,10 @@ final class PhpDocToWrittenType
             return null;
         }
 
-        return new WrittenType($found->type, $tokens, $scope);
+        return new WrittenType($found->type, $tokens, $names);
     }
 
-    public function docToParamType(?string $doc, string $member, NameScope $scope, SourceLocation $location): WrittenType|Diagnostic|null
+    public function docToParamType(?string $doc, string $member, NameContext $names, SourceLocation $location): WrittenType|Diagnostic|null
     {
         if ($doc === null) {
             return null;
@@ -90,7 +91,7 @@ final class PhpDocToWrittenType
                 return new Diagnostic(sprintf('cannot read the @param of "%s": write a PHPDoc type, as in @param list<Pet> $%s', $member, $member), $location);
             }
             if ($tag->value instanceof ParamTagValueNode && $tag->value->parameterName === '$' . $member) {
-                return new WrittenType($tag->value->type, $tokens, $scope);
+                return new WrittenType($tag->value->type, $tokens, $names);
             }
         }
 

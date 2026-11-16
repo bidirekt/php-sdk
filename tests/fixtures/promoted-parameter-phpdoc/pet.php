@@ -15,8 +15,5 @@ final class Pet
         #[BidirektField] public array $scores,
         /** @var list<float> */
         #[BidirektField] public array $weights,
-        #[BidirektField]
-        /** @var list<bool> */
-        public array $checks,
     ) {}
 }

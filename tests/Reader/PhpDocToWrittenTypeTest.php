@@ -6,9 +6,12 @@ namespace Bidirekt\PhpSdk\Tests\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
-use Bidirekt\PhpSdk\Reader\NameScope;
 use Bidirekt\PhpSdk\Reader\PhpDocToWrittenType;
 use Bidirekt\PhpSdk\Reader\WrittenType;
+use PhpParser\ErrorHandler\Throwing;
+use PhpParser\NameContext;
+use PhpParser\Node\Name;
+use PhpParser\Node\Stmt\Use_;
 use PHPUnit\Framework\TestCase;
 
 final class PhpDocToWrittenTypeTest extends TestCase
@@ -17,7 +20,7 @@ final class PhpDocToWrittenTypeTest extends TestCase
     {
         $doc = "/**\n * @var list<int>\n * @var list<string> \$tags\n * @var list<bool> \$flags\n */";
 
-        $type = (new PhpDocToWrittenType())->docToVarType($doc, 'tags', new NameScope(''), new SourceLocation('pet.php', 3));
+        $type = (new PhpDocToWrittenType())->docToVarType($doc, 'tags', self::globalNames(), new SourceLocation('pet.php', 3));
 
         self::assertInstanceOf(WrittenType::class, $type);
         self::assertSame('list<string>', $type->textOf($type->node));
@@ -27,7 +30,7 @@ final class PhpDocToWrittenTypeTest extends TestCase
     {
         $doc = "/**\n * @param list<int> \$scores\n * @param array<string,  Pet> \$pets\n */";
 
-        $type = (new PhpDocToWrittenType())->docToParamType($doc, 'pets', new NameScope(''), new SourceLocation('pet.php', 3));
+        $type = (new PhpDocToWrittenType())->docToParamType($doc, 'pets', self::globalNames(), new SourceLocation('pet.php', 3));
 
         self::assertInstanceOf(WrittenType::class, $type);
         self::assertSame('array<string, Pet>', $type->textOf($type->node));
@@ -35,10 +38,11 @@ final class PhpDocToWrittenTypeTest extends TestCase
 
     public function testResolvesClassNamesThroughTheScope(): void
     {
-        $scope = new NameScope('App\\Shelters');
-        $scope->addAlias('P', 'App\\Pet');
+        $names = new NameContext(new Throwing());
+        $names->startNamespace(new Name('App\\Shelters'));
+        $names->addAlias(new Name('App\\Pet'), 'P', Use_::TYPE_NORMAL);
 
-        $type = (new PhpDocToWrittenType())->textToWrittenType('?P', $scope);
+        $type = (new PhpDocToWrittenType())->textToWrittenType('?P', $names);
 
         self::assertInstanceOf(WrittenType::class, $type);
         self::assertSame('App\\Pet', $type->classNameToFullyQualified('P'));
@@ -49,7 +53,7 @@ final class PhpDocToWrittenTypeTest extends TestCase
     {
         $location = new SourceLocation('pet.php', 3);
 
-        $type = (new PhpDocToWrittenType())->docToVarType('/** @var list<int */', 'tags', new NameScope(''), $location);
+        $type = (new PhpDocToWrittenType())->docToVarType('/** @var list<int */', 'tags', self::globalNames(), $location);
 
         self::assertEquals(new Diagnostic('cannot read the @var of "tags": write a PHPDoc type, as in @var list<Pet>', $location), $type);
     }
@@ -59,9 +63,17 @@ final class PhpDocToWrittenTypeTest extends TestCase
         $docs = new PhpDocToWrittenType();
         $location = new SourceLocation('pet.php', 3);
 
-        self::assertNull($docs->docToVarType(null, 'tags', new NameScope(''), $location));
-        self::assertNull($docs->docToVarType('/** Shown on the card */', 'tags', new NameScope(''), $location));
-        self::assertNull($docs->docToParamType('/** @param int $age */', 'tags', new NameScope(''), $location));
-        self::assertNull($docs->textToWrittenType('list<', new NameScope('')));
+        self::assertNull($docs->docToVarType(null, 'tags', self::globalNames(), $location));
+        self::assertNull($docs->docToVarType('/** Shown on the card */', 'tags', self::globalNames(), $location));
+        self::assertNull($docs->docToParamType('/** @param int $age */', 'tags', self::globalNames(), $location));
+        self::assertNull($docs->textToWrittenType('list<', self::globalNames()));
+    }
+
+    private static function globalNames(): NameContext
+    {
+        $names = new NameContext(new Throwing());
+        $names->startNamespace();
+
+        return $names;
     }
 }

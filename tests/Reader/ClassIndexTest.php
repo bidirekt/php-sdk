@@ -42,7 +42,6 @@ final class ClassIndexTest extends TestCase
             $declaration = $classes->lookup($class, $usedAt)->declaration;
             self::assertNotNull($declaration, $class);
             self::assertSame($this->root . '/src/Pet.php', $declaration->file->path);
-            self::assertFalse($declaration->inVendor);
         }
         self::assertSame('App\\Status', $classes->lookup('app\\status', $usedAt)->declaration?->name);
     }
@@ -50,12 +49,11 @@ final class ClassIndexTest extends TestCase
     public function testErrorsOnAClassDeclaredInTwoFilesOnlyWhenItIsLookedUp(): void
     {
         $this->write('_ide_helper_models.php', "<?php\nnamespace App {\n    /** helper */\n    class Pet {}\n}\n");
-        $this->write('src/Pet.php', "<?php\nnamespace App;\n\n#[Attribute]\nfinal class Pet {}\n");
+        $this->write('src/Pet.php', "<?php\nnamespace App;\n\n#[\\Bidirekt\\PhpSdk\\BidirektSchema]\nfinal class Pet {}\n");
         $this->write('src/Owner.php', "<?php\nnamespace App;\n\nfinal class Owner {}\n");
         $classes = $this->index();
         $usedAt = new SourceLocation($this->root . '/src/Owner.php', 4);
 
-        self::assertCount(2, $classes->projectDeclarations('App\\Pet'));
         self::assertNotNull($classes->lookup('App\\Owner', $usedAt)->declaration);
         $lookup = $classes->lookup('App\\Pet', $usedAt);
         self::assertNull($lookup->declaration);
@@ -78,9 +76,7 @@ final class ClassIndexTest extends TestCase
 
         $animal = $classes->lookup('Acme\\Animal', $usedAt)->declaration;
         self::assertNotNull($animal);
-        self::assertTrue($animal->inVendor);
         self::assertSame($this->root . '/vendor/acme/zoo/src/Animal.php', $animal->file->path);
-        self::assertSame([], $classes->projectDeclarations('Acme\\Animal'));
         self::assertNull($classes->lookup('Acme\\Missing', $usedAt)->declaration);
         self::assertSame([], $classes->lookup('Acme\\Missing', $usedAt)->errors);
         self::assertEquals(
@@ -114,17 +110,18 @@ final class ClassIndexTest extends TestCase
         self::assertSame([], $lookup->errors);
     }
 
-    public function testRejectsAnAutoloadMapItCannotRead(): void
+    public function testRejectsAnAutoloadMapItCannotReadOnlyWhenAVendorClassIsLookedUp(): void
     {
         $this->write('composer.json', '{}');
-        $this->write('vendor/composer/autoload_classmap.php', "<?php\nreturn array('App\\\\Pet' => getenv('HOME'));\n");
+        $this->write('src/Pet.php', "<?php\nnamespace App;\n\nfinal class Pet {}\n");
+        $this->write('vendor/composer/autoload_classmap.php', "<?php\nreturn array('Acme\\\\Animal' => getenv('HOME'));\n");
+        $classes = $this->index();
+        $usedAt = new SourceLocation($this->root . '/src/Pet.php', 4);
 
-        $project = DirectoryToProject::directoryToProject($this->root);
-        self::assertInstanceOf(Project::class, $project);
-
+        self::assertNotNull($classes->lookup('App\\Pet', $usedAt)->declaration);
         self::assertEquals(
-            new Diagnostic('cannot read the Composer autoload map: run composer install again', new SourceLocation($this->root . '/vendor/composer/autoload_classmap.php', 1)),
-            ClassIndex::projectToIndex($project, new PhpFileToParsed(), []),
+            [new Diagnostic('cannot read the Composer autoload map: run composer install again', new SourceLocation($this->root . '/vendor/composer/autoload_classmap.php', 1))],
+            $classes->lookup('Acme\\Animal', $usedAt)->errors,
         );
     }
 
@@ -133,14 +130,17 @@ final class ClassIndexTest extends TestCase
         $project = DirectoryToProject::directoryToProject($this->root);
         self::assertInstanceOf(Project::class, $project);
         $parser = new PhpFileToParsed();
-        $files = [];
-        foreach (ProjectToFiles::projectToFiles($project) as $path) {
-            $parsed = $parser->fileToParsed($path);
-            self::assertInstanceOf(ParsedFile::class, $parsed);
-            $files[] = $parsed;
+        $index = new ClassIndex($parser, $project->composer?->vendorDirectory);
+        foreach (ProjectToFiles::projectToFiles($project)->paths as $path) {
+            $read = $parser->projectFileToRead($path);
+            self::assertNotInstanceOf(Diagnostic::class, $read);
+            if ($read instanceof ParsedFile) {
+                $index->addParsedFile($read);
+
+                continue;
+            }
+            $index->addDeclaredClasses($read);
         }
-        $index = ClassIndex::projectToIndex($project, $parser, $files);
-        self::assertInstanceOf(ClassIndex::class, $index);
 
         return $index;
     }

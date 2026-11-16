@@ -24,6 +24,6 @@ final class ArgumentsToFieldOptions
             ));
         }
 
-        return new FieldOptions($name, $description, $optional, $nullable, $arguments);
+        return new FieldOptions($name, $description, $optional, $nullable);
     }
 }

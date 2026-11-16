@@ -37,9 +37,23 @@ use PhpParser\Node\Stmt\TraitUse;
  */
 final class ConstantExpressionToValue
 {
+    /** `request: null` declares an empty body; any other parameter passed null takes its default, as PHP does */
+    private const NULL_IS_VALUE = ['request'];
+
+    /** the classes `self`, `static` and `parent` name in the expressions of a field read for a schema */
+    private ?ClassScope $scope = null;
+
     public function __construct(
         private ClassIndex $classes,
     ) {}
+
+    public function withScope(?ClassScope $scope): self
+    {
+        $scoped = clone $this;
+        $scoped->scope = $scope;
+
+        return $scoped;
+    }
 
     /**
      * @return ConstantValue|list<Diagnostic>
@@ -97,6 +111,9 @@ final class ConstantExpressionToValue
 
                 continue;
             }
+            if ($value->value === null && !in_array($name, self::NULL_IS_VALUE, true)) {
+                continue;
+            }
             $values[$name] = $value;
         }
         if ($errors !== []) {
@@ -115,7 +132,7 @@ final class ConstantExpressionToValue
             $name = $argument->name->toString();
             if (!in_array($name, $parameters, true)) {
                 return new Diagnostic(
-                    sprintf('unknown argument "%s" in %s: write %s', $name, $what, self::namesToChoice($parameters)),
+                    sprintf('unknown argument "%s" in %s: write %s', $name, $what, NamesToChoice::namesToChoice($parameters)),
                     $file->locationOf($argument->name),
                 );
             }
@@ -164,7 +181,7 @@ final class ConstantExpressionToValue
             return $this->enumCaseValueToValue($expression->var, $file, $resolving);
         }
         if ($expression instanceof New_ && $expression->class instanceof Name && strtolower($expression->class->toString()) === strtolower(BidirektField::class)) {
-            $arguments = $this->argumentsToNamedResolving($expression->args, SdkAttributes::FIELD_PARAMETERS, 'new BidirektField(…)', $location, $file, $resolving);
+            $arguments = $this->argumentsToNamedResolving($expression->args, SdkAttributes::classToParameters(BidirektField::class), 'new BidirektField(…)', $location, $file, $resolving);
             if (is_array($arguments)) {
                 return $arguments;
             }
@@ -268,7 +285,7 @@ final class ConstantExpressionToValue
         if ($found === null) {
             return [self::missingConstant($declaration, $constant, $shown, $location)];
         }
-        $value = $this->expressionToValueResolving($found->value, $found->owner->file, $resolving + [$key => true]);
+        $value = $this->withScope(null)->expressionToValueResolving($found->value, $found->owner->file, $resolving + [$key => true]);
         if (is_array($value)) {
             return $value;
         }
@@ -308,7 +325,7 @@ final class ConstantExpressionToValue
                 $location,
             )];
         }
-        $value = $this->expressionToValueResolving($case->expr, $declaration->file, $resolving);
+        $value = $this->withScope(null)->expressionToValueResolving($case->expr, $declaration->file, $resolving);
         if (is_array($value)) {
             return $value;
         }
@@ -325,6 +342,12 @@ final class ConstantExpressionToValue
             return $fetch->class->toString();
         }
         $enclosing = NodeToEnclosingClass::nodeToEnclosingClass($fetch);
+        if ($this->scope !== null) {
+            $enclosing = $this->scope->selfClass->node;
+        }
+        if ($this->scope !== null && $fetch->class->toLowerString() === 'static') {
+            $enclosing = $this->scope->staticClass->node;
+        }
         if ($enclosing === null || $enclosing->namespacedName === null) {
             return self::unreadable($fetch, $file);
         }
@@ -461,17 +484,5 @@ final class ConstantExpressionToValue
             ),
             $file->locationOf($expression),
         );
-    }
-
-    /**
-     * @param list<string> $names
-     */
-    private static function namesToChoice(array $names): string
-    {
-        if (count($names) === 1) {
-            return $names[0];
-        }
-
-        return implode(', ', array_slice($names, 0, -1)) . ' or ' . $names[count($names) - 1];
     }
 }

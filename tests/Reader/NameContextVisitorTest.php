@@ -4,20 +4,21 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Tests\Reader;
 
-use Bidirekt\PhpSdk\Reader\NameScope;
+use Bidirekt\PhpSdk\Reader\NameContextVisitor;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
 use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
+use PhpParser\NameContext;
 use PhpParser\Node\Stmt\Property;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\TestCase;
 
-final class NameScopeTest extends TestCase
+final class NameContextVisitorTest extends TestCase
 {
     private string $file;
 
     protected function setUp(): void
     {
-        $this->file = sys_get_temp_dir() . '/php-sdk-name-scope-' . bin2hex(random_bytes(6)) . '.php';
+        $this->file = sys_get_temp_dir() . '/php-sdk-name-context-visitor-' . bin2hex(random_bytes(6)) . '.php';
     }
 
     protected function tearDown(): void
@@ -29,7 +30,7 @@ final class NameScopeTest extends TestCase
 
     public function testResolvesADocblockNameThroughAnAliasedUse(): void
     {
-        $scope = $this->scopeOfFirstProperty(<<<'PHP'
+        $names = $this->namesOfFirstProperty(<<<'PHP'
             <?php
 
             namespace App\Http;
@@ -45,17 +46,17 @@ final class NameScopeTest extends TestCase
             }
             PHP);
 
-        self::assertSame('App\\Pet', $scope->classNameToFullyQualified('P'));
-        self::assertSame('App\\Pet', $scope->classNameToFullyQualified('p'));
-        self::assertSame('App\\Pet\\Photo', $scope->classNameToFullyQualified('P\\Photo'));
-        self::assertSame('App\\Models\\Owner', $scope->classNameToFullyQualified('Owner'));
-        self::assertSame('App\\Models\\Tag', $scope->classNameToFullyQualified('Label'));
-        self::assertSame('App\\Http\\helper', $scope->classNameToFullyQualified('helper'));
+        self::assertSame('App\\Pet', NameContextVisitor::classNameToFullyQualified($names, 'P'));
+        self::assertSame('App\\Pet', NameContextVisitor::classNameToFullyQualified($names, 'p'));
+        self::assertSame('App\\Pet\\Photo', NameContextVisitor::classNameToFullyQualified($names, 'P\\Photo'));
+        self::assertSame('App\\Models\\Owner', NameContextVisitor::classNameToFullyQualified($names, 'Owner'));
+        self::assertSame('App\\Models\\Tag', NameContextVisitor::classNameToFullyQualified($names, 'Label'));
+        self::assertSame('App\\Http\\helper', NameContextVisitor::classNameToFullyQualified($names, 'helper'));
     }
 
     public function testResolvesAnUnimportedNameThroughTheNamespace(): void
     {
-        $scope = $this->scopeOfFirstProperty(<<<'PHP'
+        $names = $this->namesOfFirstProperty(<<<'PHP'
             <?php
 
             namespace App\Http;
@@ -67,18 +68,17 @@ final class NameScopeTest extends TestCase
             }
             PHP);
 
-        self::assertSame('App\\Http', $scope->namespace);
-        self::assertSame('App\\Http\\Pet', $scope->classNameToFullyQualified('Pet'));
-        self::assertSame('App\\Http\\Models\\Pet', $scope->classNameToFullyQualified('Models\\Pet'));
-        self::assertSame('Acme\\Pet', $scope->classNameToFullyQualified('\\Acme\\Pet'));
-        self::assertSame('App\\Http\\Pet', $scope->classNameToFullyQualified('namespace\\Pet'));
-        self::assertSame('self', $scope->classNameToFullyQualified('self'));
-        self::assertFalse($scope->hasAlias('Pet'));
+        self::assertSame('App\\Http', $names->getNamespace()?->toString());
+        self::assertSame('App\\Http\\Pet', NameContextVisitor::classNameToFullyQualified($names, 'Pet'));
+        self::assertSame('App\\Http\\Models\\Pet', NameContextVisitor::classNameToFullyQualified($names, 'Models\\Pet'));
+        self::assertSame('Acme\\Pet', NameContextVisitor::classNameToFullyQualified($names, '\\Acme\\Pet'));
+        self::assertSame('App\\Http\\Pet', NameContextVisitor::classNameToFullyQualified($names, 'namespace\\Pet'));
+        self::assertSame('self', NameContextVisitor::classNameToFullyQualified($names, 'self'));
     }
 
     public function testResolvesInTheGlobalNamespaceWithoutPrefix(): void
     {
-        $scope = $this->scopeOfFirstProperty(<<<'PHP'
+        $names = $this->namesOfFirstProperty(<<<'PHP'
             <?php
 
             final class Shelter
@@ -88,7 +88,7 @@ final class NameScopeTest extends TestCase
             }
             PHP);
 
-        self::assertSame('Pet', $scope->classNameToFullyQualified('Pet'));
+        self::assertSame('Pet', NameContextVisitor::classNameToFullyQualified($names, 'Pet'));
     }
 
     public function testKeepsTheScopeOfEachNamespaceInAFile(): void
@@ -116,16 +116,16 @@ final class NameScopeTest extends TestCase
             PHP);
         $properties = (new NodeFinder())->findInstanceOf($parsed->statements, Property::class);
 
-        self::assertSame('Acme\\Pet', NameScope::ofNode($properties[0])->classNameToFullyQualified('Pet'));
-        self::assertSame('App\\Http\\Pet', NameScope::ofNode($properties[1])->classNameToFullyQualified('Pet'));
+        self::assertSame('Acme\\Pet', NameContextVisitor::classNameToFullyQualified(NameContextVisitor::nodeToNameContext($properties[0]), 'Pet'));
+        self::assertSame('App\\Http\\Pet', NameContextVisitor::classNameToFullyQualified(NameContextVisitor::nodeToNameContext($properties[1]), 'Pet'));
     }
 
-    private function scopeOfFirstProperty(string $code): NameScope
+    private function namesOfFirstProperty(string $code): NameContext
     {
         $property = (new NodeFinder())->findFirstInstanceOf($this->parse($code)->statements, Property::class);
         self::assertNotNull($property);
 
-        return NameScope::ofNode($property);
+        return NameContextVisitor::nodeToNameContext($property);
     }
 
     private function parse(string $code): ParsedFile

@@ -6,11 +6,11 @@ namespace Bidirekt\PhpSdk\Tests\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
-use Bidirekt\PhpSdk\Reader\AutoloadMaps;
-use Bidirekt\PhpSdk\Reader\VendorToAutoloadMaps;
+use Bidirekt\PhpSdk\Reader\VendorToClassLoader;
+use Composer\Autoload\ClassLoader;
 use PHPUnit\Framework\TestCase;
 
-final class VendorToAutoloadMapsTest extends TestCase
+final class VendorToClassLoaderTest extends TestCase
 {
     private const HEADER = <<<'PHP'
         <?php
@@ -27,7 +27,7 @@ final class VendorToAutoloadMapsTest extends TestCase
 
     protected function setUp(): void
     {
-        $this->root = sys_get_temp_dir() . '/php-sdk-vendor-to-autoload-maps-' . bin2hex(random_bytes(6));
+        $this->root = sys_get_temp_dir() . '/php-sdk-vendor-to-class-loader-' . bin2hex(random_bytes(6));
         mkdir($this->root);
         $this->root = (string) realpath($this->root);
     }
@@ -57,26 +57,55 @@ final class VendorToAutoloadMapsTest extends TestCase
             );
             PHP);
 
-        self::assertEquals(new AutoloadMaps(
-            [
-                'Acme\\Base\\' => [$this->root . '/deps/libs/acme/base/src', $this->root . '/deps/libs/acme/base/lib'],
-                'App\\' => [$this->root . '/src'],
-            ],
-            ['Old_' => [$this->root . '/old']],
-            ['Composer\\InstalledVersions' => $this->root . '/deps/libs/composer/InstalledVersions.php'],
-        ), VendorToAutoloadMaps::vendorToAutoloadMaps($this->root . '/deps/libs'));
+        $this->write('deps/libs/composer/InstalledVersions.php', '<?php');
+
+        $loader = VendorToClassLoader::vendorToClassLoader($this->root . '/deps/libs');
+
+        self::assertInstanceOf(ClassLoader::class, $loader);
+        self::assertSame([
+            'Acme\\Base\\' => [$this->root . '/deps/libs/acme/base/src', $this->root . '/deps/libs/acme/base/lib'],
+            'App\\' => [$this->root . '/src'],
+        ], $loader->getPrefixesPsr4());
+        self::assertSame(['Old_' => [$this->root . '/old']], $loader->getPrefixes());
+        self::assertSame(['Composer\\InstalledVersions' => $this->root . '/deps/libs/composer/InstalledVersions.php'], $loader->getClassMap());
+    }
+
+    public function testFindsAClassInTheClassmapFirstAndByPsr4WhenItsClassmapFileIsMissing(): void
+    {
+        $this->write('vendor/composer/autoload_psr4.php', self::HEADER . "return array('Acme\\\\' => array(\$vendorDir . '/acme/psr4'));\n");
+        $this->write('vendor/composer/autoload_classmap.php', self::HEADER . <<<'PHP'
+            return array(
+                'Acme\\Base' => $vendorDir . '/acme/classmap/Base.php',
+                'Acme\\Moved' => $vendorDir . '/acme/classmap/Moved.php',
+            );
+            PHP);
+        $this->write('vendor/acme/classmap/Base.php', '<?php');
+        $this->write('vendor/acme/psr4/Base.php', '<?php');
+        $this->write('vendor/acme/psr4/Moved.php', '<?php');
+
+        $loader = VendorToClassLoader::vendorToClassLoader($this->root . '/vendor');
+
+        self::assertInstanceOf(ClassLoader::class, $loader);
+        self::assertSame($this->root . '/vendor/acme/classmap/Base.php', $loader->findFile('Acme\\Base'));
+        self::assertSame($this->root . '/vendor/acme/psr4/Moved.php', $loader->findFile('Acme\\Moved'));
+        self::assertFalse($loader->findFile('Acme\\Missing'));
     }
 
     public function testTakesAMissingMapAsEmpty(): void
     {
         mkdir($this->root . '/vendor/composer', 0777, true);
 
-        self::assertEquals(new AutoloadMaps([], [], []), VendorToAutoloadMaps::vendorToAutoloadMaps($this->root . '/vendor'));
+        $loader = VendorToClassLoader::vendorToClassLoader($this->root . '/vendor');
+
+        self::assertInstanceOf(ClassLoader::class, $loader);
+        self::assertSame([], $loader->getPrefixesPsr4());
+        self::assertSame([], $loader->getPrefixes());
+        self::assertSame([], $loader->getClassMap());
     }
 
     public function testIsNullWhenTheVendorFolderIsNotInstalled(): void
     {
-        self::assertNull(VendorToAutoloadMaps::vendorToAutoloadMaps($this->root . '/vendor'));
+        self::assertNull(VendorToClassLoader::vendorToClassLoader($this->root . '/vendor'));
     }
 
     public function testRejectsAMapWithAnExpressionItCannotEvaluate(): void
@@ -85,7 +114,7 @@ final class VendorToAutoloadMapsTest extends TestCase
 
         self::assertEquals(
             new Diagnostic('cannot read the Composer autoload map: run composer install again', new SourceLocation($this->root . '/vendor/composer/autoload_psr4.php', 1)),
-            VendorToAutoloadMaps::vendorToAutoloadMaps($this->root . '/vendor'),
+            VendorToClassLoader::vendorToClassLoader($this->root . '/vendor'),
         );
     }
 

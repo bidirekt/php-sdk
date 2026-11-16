@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Bidirekt\PhpSdk\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
-use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt;
 use PhpParser\Node\Stmt\ClassLike;
@@ -87,24 +86,12 @@ final class CommentsToSchemaTags
         }
         if ($read->fieldTag($element) !== null) {
             $read->errors[] = new Diagnostic(
-                sprintf('"@bidirekt field" is declared more than once on property "%s": keep one', self::memberToName($element)),
+                sprintf('"@bidirekt field" is declared more than once on property "%s": keep one', SchemaNaming::memberToName($element)),
                 $tag->location,
             );
 
             return;
         }
         $read->fields[spl_object_id($element)] = $tag;
-    }
-
-    private static function memberToName(Stmt\Property|Param $element): string
-    {
-        if ($element instanceof Stmt\Property) {
-            return $element->props[0]->name->toString();
-        }
-        if ($element->var instanceof Variable && is_string($element->var->name)) {
-            return $element->var->name;
-        }
-
-        return '';
     }
 }

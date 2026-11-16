@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Reader;
 
+use PhpParser\NameContext;
 use PhpParser\Node;
 
 /**
@@ -20,6 +21,6 @@ final class FieldSource
         public ?Node $nativeType,
         public ?string $varDoc,
         public ?string $constructorDoc,
-        public NameScope $scope,
+        public NameContext $names,
     ) {}
 }

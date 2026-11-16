@@ -23,6 +23,7 @@ final class DiagnosticsToTextTest extends TestCase
                 new Diagnostic('a warning', new SourceLocation('/app/src/pet.php', 3)),
                 new Diagnostic('another warning', new SourceLocation('/app/src/Pet.php', 10)),
                 new Diagnostic('a warning in the parent folder', new SourceLocation('/lib/Base.php', 1)),
+                new Diagnostic('a warning about a folder', new SourceLocation('/app/src/locked')),
             ],
             '/app',
         );
@@ -31,6 +32,7 @@ final class DiagnosticsToTextTest extends TestCase
             "error without a place\n"
             . "src/Pet.php:9 first error\n"
             . "src/Pet.php:10 warning: another warning\n"
+            . "src/locked warning: a warning about a folder\n"
             . "src/pet.php:3 warning: a warning\n"
             . "src/pet.php:12 second error\n"
             . "../lib/Base.php:1 warning: a warning in the parent folder\n",

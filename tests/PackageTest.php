@@ -68,11 +68,12 @@ final class PackageTest extends TestCase
                 ['type' => 'path', 'url' => (string) realpath(self::REPOSITORY), 'options' => ['symlink' => false]],
             ],
             'require-dev' => ['bidirekt/php-sdk' => '*@dev'],
-            'autoload' => ['psr-4' => ['App\\' => 'src/']],
+            'autoload' => ['psr-4' => ['App\\' => 'src/'], 'files' => ['bootstrap.php']],
         ];
         file_put_contents($this->workspace . '/composer.json', json_encode($manifest, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
         mkdir($this->workspace . '/src');
         file_put_contents($this->workspace . '/src/Pet.php', self::PET_SOURCE);
+        file_put_contents($this->workspace . '/bootstrap.php', "<?php\nfile_put_contents(__DIR__ . '/bootstrapped.txt', 'ran');\n");
 
         [$installCode, $installOutput] = $this->runInWorkspace([PHP_BINARY, $composer, 'install', '--no-interaction', '--no-progress']);
         self::assertSame(0, $installCode, $installOutput);
@@ -87,6 +88,7 @@ final class PackageTest extends TestCase
         self::assertSame('', $generateOutput, 'output');
         self::assertSame(0, $generateCode, 'exit code');
         self::assertSame(self::PET_CONTRACT, file_get_contents($this->workspace . '/contracts/generated.yaml'));
+        self::assertFileDoesNotExist($this->workspace . '/bootstrapped.txt', 'the project autoload files ran');
     }
 
     private static function composerBinary(): ?string
