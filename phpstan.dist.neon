@@ -1,0 +1,8 @@
+parameters:
+    level: max
+    phpVersion: 80000
+    paths:
+        - bin/php-sdk
+        - tests
+    excludePaths:
+        - tests/fixtures/*
