@@ -1,0 +1,3 @@
+status.php:6 #[BidirektSchema] is on enum "PetStatus", which has no cases: add a case with a string value
+status.php:10 "@bidirekt schema" is above enum "PetSize", which has no cases: add a case with a string value
+status.php:15 enum "PetColor" has no cases: add a case with a string value

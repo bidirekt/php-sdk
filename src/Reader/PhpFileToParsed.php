@@ -45,7 +45,7 @@ final class PhpFileToParsed
         }
         $nodes = new FileNodesVisitor($code);
         $resolver = new NameResolver(new Collecting(), ['preserveOriginalNames' => true, 'replaceNodes' => true]);
-        $traverser = new NodeTraverser($resolver, new NameContextVisitor(), $nodes);
+        $traverser = new NodeTraverser($resolver, new NameContextVisitor($resolver), $nodes);
         $resolved = array_values($traverser->traverse($statements));
 
         return new ParsedFile($path, $code, $resolved, array_values($this->parser->getTokens()), $nodes->nodes);

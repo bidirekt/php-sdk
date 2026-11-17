@@ -137,8 +137,8 @@ final class ClassIndex
     }
 
     /**
-     * Where the project files declare the class, the unparsed files that may declare it read first, so the
-     * declarations come in the order of the files, as if every file had been read.
+     * The first declaration of the class in each project file, the unparsed files that may declare it read first,
+     * so the declarations come in the order of the files, as if every file had been read.
      *
      * @return list<DeclaredClass>
      */
@@ -163,7 +163,12 @@ final class ClassIndex
             usort($this->project[$classKey], static fn(DeclaredClass $a, DeclaredClass $b): int => strcmp((string) $a->location->file, (string) $b->location->file));
         }
 
-        return $this->project[$key] ?? [];
+        $byFile = [];
+        foreach ($this->project[$key] ?? [] as $class) {
+            $byFile[(string) $class->location->file] ??= $class;
+        }
+
+        return array_values($byFile);
     }
 
     private function fileLookup(string $path, string $key): ClassLookup

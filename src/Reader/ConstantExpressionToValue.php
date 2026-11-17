@@ -249,18 +249,30 @@ final class ConstantExpressionToValue
         if ($class instanceof Diagnostic) {
             return [$class];
         }
-        if (strtolower($fetch->constant) === 'class') {
+        $constant = $fetch->constant;
+        if (strtolower($constant) === 'class') {
+            if ($class instanceof ClassDeclaration) {
+                return [self::unreadable($fetch->text, $location)];
+            }
+
             return new ConstantValue(new ClassReference($class), $location);
         }
-        $constant = $fetch->constant;
-        $shown = sprintf('%s::%s', SchemaNaming::classToShortName($class), $constant);
-        $key = strtolower($class) . '::' . $constant;
+        if (is_string($class)) {
+            $shown = sprintf('%s::%s', SchemaNaming::classToShortName($class), $constant);
+            $key = strtolower($class) . '::' . $constant;
+        } else {
+            $shown = $fetch->text;
+            $key = spl_object_id($class->summary) . '::' . $constant;
+        }
         if (isset($resolving[$key])) {
             return [new Diagnostic(sprintf('constant "%s" refers to itself: give it a value', $shown), $location)];
         }
-        $declaration = $this->classToDeclaration($class, $location, sprintf('constant "%s"', $shown));
-        if (!$declaration instanceof ClassDeclaration) {
-            return $declaration;
+        $declaration = $class;
+        if (is_string($declaration)) {
+            $declaration = $this->classToDeclaration($declaration, $location, sprintf('constant "%s"', $shown));
+            if (!$declaration instanceof ClassDeclaration) {
+                return $declaration;
+            }
         }
         $found = $this->declarationToConstant($declaration, $constant, []);
         if (is_array($found)) {
@@ -287,6 +299,9 @@ final class ConstantExpressionToValue
         $class = $this->fetchToClass($fetch);
         if ($class instanceof Diagnostic) {
             return [$class];
+        }
+        if ($class instanceof ClassDeclaration) {
+            return [self::unreadable($fetch->text, $location)];
         }
         $shown = sprintf('%s::%s', SchemaNaming::classToShortName($class), $fetch->constant);
         $key = strtolower($class) . '::' . $fetch->constant . '->value';
@@ -320,9 +335,9 @@ final class ConstantExpressionToValue
 
     /**
      * The class the fetch names: `self`, `static` and `parent` stand for the class it is written in, or for
-     * the scope's classes when one is set.
+     * the scope's classes when one is set; an anonymous class, which no name finds, is its declaration.
      */
-    private function fetchToClass(ClassConstantSummary $fetch): string|Diagnostic
+    private function fetchToClass(ClassConstantSummary $fetch): string|ClassDeclaration|Diagnostic
     {
         if ($fetch->special === null) {
             return $fetch->class;
@@ -330,26 +345,28 @@ final class ConstantExpressionToValue
         $name = $fetch->enclosingClass;
         $isClass = $fetch->enclosingIsClass;
         $parent = $fetch->enclosingParent;
+        $enclosing = null;
         if ($this->scope !== null) {
-            $enclosing = $this->scope->selfClass->summary;
+            $enclosing = $this->scope->selfClass;
             if ($fetch->special === 'static') {
-                $enclosing = $this->scope->staticClass->summary;
+                $enclosing = $this->scope->staticClass;
             }
-            $name = $enclosing->name;
-            $isClass = $enclosing->kind === 'class';
-            $parent = $enclosing->parent?->resolved;
+            $name = $enclosing->summary->name;
+            $isClass = $enclosing->summary->kind === 'class';
+            $parent = $enclosing->summary->parent?->resolved;
         }
-        if ($name === null) {
-            return self::unreadable($fetch->text, $fetch->location);
+        if ($fetch->special === 'parent') {
+            if (!$isClass || $parent === null) {
+                return new Diagnostic(sprintf('"%s" has no parent: write the class that declares it', $fetch->text), $fetch->location);
+            }
+
+            return $parent;
         }
-        if ($fetch->special !== 'parent') {
+        if ($name !== null) {
             return $name;
         }
-        if (!$isClass || $parent === null) {
-            return new Diagnostic(sprintf('"%s" has no parent: write the class that declares it', $fetch->text), $fetch->location);
-        }
 
-        return $parent;
+        return $enclosing ?? self::unreadable($fetch->text, $fetch->location);
     }
 
     /**

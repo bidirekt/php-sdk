@@ -6,7 +6,6 @@ namespace Bidirekt\PhpSdk\Reader;
 
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Param;
-use PhpParser\Node\PropertyItem;
 use PhpParser\Node\Stmt;
 
 /**
@@ -37,13 +36,10 @@ final class SchemaNaming
     /**
      * The member's name in the code, a property statement's being its first property's.
      */
-    public static function memberToName(Stmt\Property|PropertyItem|Param $member): string
+    public static function memberToName(Stmt\Property|Param $member): string
     {
         if ($member instanceof Stmt\Property) {
             return $member->props[0]->name->toString();
-        }
-        if ($member instanceof PropertyItem) {
-            return $member->name->toString();
         }
         if ($member->var instanceof Variable && is_string($member->var->name)) {
             return $member->var->name;

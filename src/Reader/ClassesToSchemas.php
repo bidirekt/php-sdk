@@ -105,6 +105,9 @@ final class ClassesToSchemas
      */
     private function classToSchemaClass(ClassSummary $class, FileSummary $file): ?array
     {
+        if (self::classToFirstDeclaration($class, $file) !== $class) {
+            return null;
+        }
         $read = $this->schemas->classToAnnotation($class, $file);
         if ($read === null) {
             return null;
@@ -146,6 +149,19 @@ final class ClassesToSchemas
         $this->schemas->addClass($class, $name);
 
         return [$declaration, $name, $fields, $form];
+    }
+
+    /**
+     * The class-like the file declares first under the same name, which PHP and the reader take for a class
+     * declared again in the same file, e.g. in the two branches of an `if`.
+     */
+    private static function classToFirstDeclaration(ClassSummary $class, FileSummary $file): ClassSummary
+    {
+        if ($class->name === null) {
+            return $class;
+        }
+
+        return $file->classDeclarationNamed(strtolower($class->name))->summary ?? $class;
     }
 
     /**
@@ -447,7 +463,7 @@ final class ClassesToSchemas
                 continue;
             }
             $owner = $site->owner;
-            if ($owner === null || isset($this->readClasses[spl_object_id($owner)])) {
+            if ($owner === null || isset($this->readClasses[spl_object_id(self::classToFirstDeclaration($owner, $file))])) {
                 continue;
             }
             if ($owner->kind === 'trait') {

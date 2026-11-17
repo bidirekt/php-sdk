@@ -208,7 +208,7 @@ final class SchemaClasses
     }
 
     /**
-     * Why an annotated enum cannot be a schema, or null when its values are strings.
+     * Why an annotated enum cannot be a schema, or null when it has cases with string values.
      *
      * @param string $placed how messages say where the annotation is: `#[BidirektSchema] is on`
      */
@@ -219,6 +219,9 @@ final class SchemaClasses
         }
         if (!self::isStringEnum($enum)) {
             return new Diagnostic(sprintf('%s %s, whose values are not strings: give its cases string values', $placed, $enum->description), $location);
+        }
+        if ($enum->cases === []) {
+            return new Diagnostic(sprintf('%s %s, which has no cases: add a case with a string value', $placed, $enum->description), $location);
         }
 
         return null;
@@ -244,6 +247,9 @@ final class SchemaClasses
      */
     private function enumToNewSchema(ClassDeclaration $enum, string $name): NamedSchema|array
     {
+        if ($enum->summary->cases === []) {
+            return [new Diagnostic(sprintf('%s has no cases: add a case with a string value', $enum->summary->description), $enum->summary->location)];
+        }
         $members = [];
         $errors = [];
         foreach ($enum->summary->cases as $case) {
