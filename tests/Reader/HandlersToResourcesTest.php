@@ -49,7 +49,7 @@ final class HandlersToResourcesTest extends TestCase
             }
 
             $app->get('/pets', function () {
-                return fn () => null;
+                return #[Route] fn () => null;
             });
             PHP);
         $parsed = (new PhpFileToParsed())->codeToParsed($this->file, (string) file_get_contents($this->file));

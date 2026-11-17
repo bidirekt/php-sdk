@@ -26,9 +26,9 @@ final class ParsedFiles
     }
 
     /**
-     * @return ParsedFile|list<DeclaredClass>|Diagnostic the file when it mentions the SDK, else the classes it declares
+     * @return ParsedFile|UnparsedFile|Diagnostic the file when it mentions the SDK, else the names it may declare
      */
-    public function projectFileToRead(string $path): ParsedFile|array|Diagnostic
+    public function projectFileToRead(string $path): ParsedFile|UnparsedFile|Diagnostic
     {
         $code = PhpFileToParsed::fileToCode($path);
         if ($code instanceof Diagnostic) {
@@ -68,6 +68,21 @@ final class ParsedFiles
         }
 
         return $this->summaries[$key] = ParsedFileToSummary::parsedFileToSummary($parsed, SchemaTags::parsedFileToTags($parsed));
+    }
+
+    /**
+     * The classes a file declares, read from its tokens, none when it cannot be read.
+     *
+     * @return list<DeclaredClass>
+     */
+    public static function pathToDeclaredClasses(string $path): array
+    {
+        $code = PhpFileToParsed::fileToCode($path);
+        if ($code instanceof Diagnostic) {
+            return [];
+        }
+
+        return CodeToDeclaredClasses::codeToDeclaredClasses($path, $code);
     }
 
     /**

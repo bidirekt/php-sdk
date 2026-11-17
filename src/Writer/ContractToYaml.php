@@ -28,29 +28,39 @@ final class ContractToYaml
     private const INDENT_STEP = '  ';
     private const MAX_IMPLICIT_KEY_LENGTH = 1024;
 
+    /** @var array<string, string> written scalar => its YAML text: the same keys and values repeat across the contract */
+    private array $scalars = [];
+
+    private function __construct() {}
+
     public static function contractToYaml(Contract $contract): string
+    {
+        return (new self())->rootToYaml($contract);
+    }
+
+    private function rootToYaml(Contract $contract): string
     {
         $root = new YamlMap();
         if (count($contract->provides) > 0) {
-            $root->add('provides', self::providedToYaml($contract->provides));
+            $root->add('provides', $this->providedToYaml($contract->provides));
         }
         if (count($contract->consumes) > 0) {
-            $root->add('consumes', self::consumedToYaml($contract->consumes));
+            $root->add('consumes', $this->consumedToYaml($contract->consumes));
         }
         if (count($contract->schemas) > 0) {
-            $root->add('schemas', self::schemasToYaml($contract->schemas));
+            $root->add('schemas', $this->schemasToYaml($contract->schemas));
         }
 
-        return self::HEADER . "\n" . self::mapToText($root, '') . "\n";
+        return self::HEADER . "\n" . $this->mapToText($root, '') . "\n";
     }
 
     /**
      * @param list<ProvidedResource>|list<ConsumedResource> $resources
      */
-    private static function providedToYaml(array $resources): YamlMap
+    private function providedToYaml(array $resources): YamlMap
     {
         $rest = new YamlMap();
-        $rest->add('rest', self::resourcesToYaml($resources));
+        $rest->add('rest', $this->resourcesToYaml($resources));
 
         return $rest;
     }
@@ -58,15 +68,15 @@ final class ContractToYaml
     /**
      * @param list<ConsumedResource> $resources
      */
-    private static function consumedToYaml(array $resources): YamlMap
+    private function consumedToYaml(array $resources): YamlMap
     {
         $byProvider = [];
         foreach ($resources as $resource) {
             $byProvider[$resource->provider][] = $resource;
         }
         $providers = new YamlMap();
-        foreach (self::sortedByKey($byProvider) as [$name, $own]) {
-            $providers->add($name, self::providedToYaml($own));
+        foreach ($this->sortedByKey($byProvider) as [$name, $own]) {
+            $providers->add($name, $this->providedToYaml($own));
         }
 
         return $providers;
@@ -75,14 +85,14 @@ final class ContractToYaml
     /**
      * @param list<ProvidedResource>|list<ConsumedResource> $resources
      */
-    private static function resourcesToYaml(array $resources): YamlMap
+    private function resourcesToYaml(array $resources): YamlMap
     {
         $byPath = [];
         foreach ($resources as $resource) {
             $byPath[$resource->path][] = $resource;
         }
         $endpoints = new YamlMap();
-        foreach (self::sortedByKey($byPath) as [$path, $own]) {
+        foreach ($this->sortedByKey($byPath) as [$path, $own]) {
             $byMethod = array_map(
                 static fn(ProvidedResource|ConsumedResource $resource): array => [strtolower($resource->method), $resource],
                 $own,
@@ -90,7 +100,7 @@ final class ContractToYaml
             usort($byMethod, static fn(array $a, array $b): int => strcmp($a[0], $b[0]));
             $methods = new YamlMap();
             foreach ($byMethod as [$method, $resource]) {
-                $methods->add($method, self::resourceToYaml($resource));
+                $methods->add($method, $this->resourceToYaml($resource));
             }
             $endpoints->add($path, $methods);
         }
@@ -98,24 +108,24 @@ final class ContractToYaml
         return $endpoints;
     }
 
-    private static function resourceToYaml(ProvidedResource|ConsumedResource $resource): YamlMap
+    private function resourceToYaml(ProvidedResource|ConsumedResource $resource): YamlMap
     {
         $interaction = new YamlMap();
         if ($resource->request !== null) {
-            $interaction->add('request', self::bodyToYaml($resource->request));
+            $interaction->add('request', $this->bodyToYaml($resource->request));
         }
         $byStatus = $resource->responses;
         usort($byStatus, static fn(Response $a, Response $b): int => $a->status <=> $b->status);
         $responses = new YamlMap();
         foreach ($byStatus as $response) {
-            $responses->add($response->status, self::bodyToYaml($response->body));
+            $responses->add($response->status, $this->bodyToYaml($response->body));
         }
         $interaction->add('responses', $responses);
 
         return $interaction;
     }
 
-    private static function bodyToYaml(Body $body): ?string
+    private function bodyToYaml(Body $body): ?string
     {
         return $body->schema;
     }
@@ -123,18 +133,18 @@ final class ContractToYaml
     /**
      * @param list<NamedSchema> $schemas
      */
-    private static function schemasToYaml(array $schemas): YamlMap
+    private function schemasToYaml(array $schemas): YamlMap
     {
         usort($schemas, static fn(NamedSchema $a, NamedSchema $b): int => strcmp($a->name, $b->name));
         $named = new YamlMap();
         foreach ($schemas as $schema) {
-            $named->add($schema->name, self::nodeToYaml($schema->node));
+            $named->add($schema->name, $this->nodeToYaml($schema->node));
         }
 
         return $named;
     }
 
-    private static function nodeToYaml(SchemaNode $node): YamlMap
+    private function nodeToYaml(SchemaNode $node): YamlMap
     {
         $fields = new YamlMap();
         if ($node instanceof RefNode) {
@@ -143,15 +153,15 @@ final class ContractToYaml
             $fields->add('type', 'object');
             $properties = new YamlMap();
             foreach ($node->properties as $property) {
-                $properties->add($property->name, self::nodeToYaml($property->node));
+                $properties->add($property->name, $this->nodeToYaml($property->node));
             }
             $fields->add('properties', $properties);
         } elseif ($node instanceof ArrayNode) {
             $fields->add('type', 'array');
-            $fields->add('items', self::nodeToYaml($node->items));
+            $fields->add('items', $this->nodeToYaml($node->items));
         } elseif ($node instanceof MapNode) {
             $fields->add('type', 'map');
-            $fields->add('values', self::nodeToYaml($node->values));
+            $fields->add('values', $this->nodeToYaml($node->values));
         } elseif ($node instanceof EnumNode) {
             $fields->add('type', 'enum');
             $fields->add('members', $node->members);
@@ -159,7 +169,7 @@ final class ContractToYaml
             $fields->add('type', 'union');
             $members = new YamlMap();
             foreach ($node->members as $member) {
-                $members->add($member->key, self::nodeToYaml($member->node));
+                $members->add($member->key, $this->nodeToYaml($member->node));
             }
             $fields->add('members', $members);
         } elseif ($node instanceof PrimitiveNode) {
@@ -183,7 +193,7 @@ final class ContractToYaml
      * @param array<array-key, non-empty-list<T>> $groups
      * @return list<array{string, non-empty-list<T>}>
      */
-    private static function sortedByKey(array $groups): array
+    private function sortedByKey(array $groups): array
     {
         $sorted = [];
         foreach ($groups as $key => $group) {
@@ -197,14 +207,14 @@ final class ContractToYaml
     /**
      * $indent is the indentation of the map's own lines.
      */
-    private static function mapToText(YamlMap $map, string $indent): string
+    private function mapToText(YamlMap $map, string $indent): string
     {
         if (count($map->pairs) === 0) {
             return '{}';
         }
         $lines = [];
         foreach ($map->pairs as [$key, $value]) {
-            $lines[] = self::pairToText($key, $value, $indent);
+            $lines[] = $this->pairToText($key, $value, $indent);
         }
 
         return implode("\n" . $indent, $lines);
@@ -213,12 +223,12 @@ final class ContractToYaml
     /**
      * @param Value $value
      */
-    private static function pairToText(int|string $key, YamlMap|array|string|bool|null $value, string $indent): string
+    private function pairToText(int|string $key, YamlMap|array|string|bool|null $value, string $indent): string
     {
         $childIndent = $indent . self::INDENT_STEP;
         $keyText = (string) $key;
         if (is_string($key)) {
-            $keyText = StringToYaml::stringToYaml($key, $childIndent, true);
+            $keyText = $this->scalarToYaml($key, $childIndent, true);
         }
         $explicitKey = $key === ''
             || $key === 0
@@ -227,7 +237,7 @@ final class ContractToYaml
         if ($explicitKey) {
             $text = '? ' . $keyText . "\n" . $indent . ':';
         }
-        $valueText = self::valueToText($value, $childIndent);
+        $valueText = $this->valueToText($value, $childIndent);
         if (!$explicitKey && $value instanceof YamlMap && count($value->pairs) > 0) {
             return $text . "\n" . $childIndent . $valueText;
         }
@@ -243,16 +253,16 @@ final class ContractToYaml
      *
      * @param Value $value
      */
-    private static function valueToText(YamlMap|array|string|bool|null $value, string $indent): string
+    private function valueToText(YamlMap|array|string|bool|null $value, string $indent): string
     {
         if ($value instanceof YamlMap) {
-            return self::mapToText($value, $indent);
+            return $this->mapToText($value, $indent);
         }
         if (is_array($value)) {
-            return self::flowSequenceToText($value, $indent);
+            return $this->flowSequenceToText($value, $indent);
         }
         if (is_string($value)) {
-            return StringToYaml::stringToYaml($value, $indent, false);
+            return $this->scalarToYaml($value, $indent, false);
         }
         if ($value === true) {
             return 'true';
@@ -261,10 +271,15 @@ final class ContractToYaml
         return '~';
     }
 
+    private function scalarToYaml(string $value, string $indent, bool $implicitKey): string
+    {
+        return $this->scalars[sprintf('%d%s|%s', $implicitKey, $indent, $value)] ??= StringToYaml::stringToYaml($value, $indent, $implicitKey);
+    }
+
     /**
      * @param list<string> $members
      */
-    private static function flowSequenceToText(array $members, string $indent): string
+    private function flowSequenceToText(array $members, string $indent): string
     {
         if (count($members) === 0) {
             return '[]';

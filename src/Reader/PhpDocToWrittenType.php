@@ -10,6 +10,7 @@ use PhpParser\NameContext;
 use PHPStan\PhpDocParser\Ast\PhpDoc\InvalidTagValueNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\ParamTagValueNode;
 use PHPStan\PhpDocParser\Ast\PhpDoc\VarTagValueNode;
+use PHPStan\PhpDocParser\Ast\Type\TypeNode;
 use PHPStan\PhpDocParser\Lexer\Lexer;
 use PHPStan\PhpDocParser\Parser\ConstExprParser;
 use PHPStan\PhpDocParser\Parser\ParserException;
@@ -29,6 +30,14 @@ final class PhpDocToWrittenType
 
     private PhpDocParser $docParser;
 
+    /**
+     * A native type is parsed once for every field that writes it: the type and its tokens are only read, and
+     * resolving its names reads a copy.
+     *
+     * @var array<string, array{TypeNode, list<array{string, int, int}>}|null> text => the type and its tokens, null when it is not a type
+     */
+    private array $nativeTypes = [];
+
     public function __construct()
     {
         $config = new ParserConfig(['indexes' => true]);
@@ -40,6 +49,22 @@ final class PhpDocToWrittenType
 
     public function textToWrittenType(string $text, NameContext $names): ?WrittenType
     {
+        if (!array_key_exists($text, $this->nativeTypes)) {
+            $this->nativeTypes[$text] = $this->textToType($text);
+        }
+        $type = $this->nativeTypes[$text];
+        if ($type === null) {
+            return null;
+        }
+
+        return new WrittenType($type[0], $type[1], $names, true);
+    }
+
+    /**
+     * @return array{TypeNode, list<array{string, int, int}>}|null
+     */
+    private function textToType(string $text): ?array
+    {
         $tokens = $this->lexer->tokenize($text);
         $iterator = new TokenIterator($tokens);
         try {
@@ -49,7 +74,7 @@ final class PhpDocToWrittenType
             return null;
         }
 
-        return new WrittenType($node, $tokens, $names, true);
+        return [$node, $tokens];
     }
 
     /**

@@ -14,6 +14,25 @@ use PhpToken;
 final class CodeToDeclaredClasses
 {
     /**
+     * A class-like keyword, then whitespace or comments, then a name: a declaration, or the same words in a
+     * comment, a string or a heredoc, which only the tokens tell apart.
+     */
+    private const CANDIDATE_PATTERN = '~\b(?:class|interface|trait|enum)(?:\s|/\*.*?\*/|(?://|#)[^\n]*)+([a-z_\x80-\xff][a-z0-9_\x80-\xff]*)~is';
+
+    /**
+     * The short names the file may declare a class-like under, read from its text: every one it declares, and
+     * maybe others, at a fraction of the cost of its tokens.
+     *
+     * @return list<string> in lowercase
+     */
+    public static function codeToCandidateNames(string $code): array
+    {
+        preg_match_all(self::CANDIDATE_PATTERN, $code, $matches);
+
+        return array_values(array_unique(array_map('strtolower', $matches[1])));
+    }
+
+    /**
      * @return list<DeclaredClass> in the order they are written
      */
     public static function codeToDeclaredClasses(string $path, string $code): array

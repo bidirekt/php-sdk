@@ -81,4 +81,22 @@ final class CodeToDeclaredClassesTest extends TestCase
 
         self::assertSame([], CodeToDeclaredClasses::codeToDeclaredClasses(self::FILE, $code));
     }
+
+    public function testFindsTheNameOfEveryDeclarationInTheTextEvenAfterAComment(): void
+    {
+        $code = <<<'PHP'
+            <?php
+
+            namespace App;
+
+            final CLASS /* a pet */ Pet {}
+            interface // named
+                Named {}
+            enum Status: string {}
+            // the class Owner is elsewhere
+            $name = Pet::class;
+            PHP;
+
+        self::assertSame(['pet', 'named', 'status', 'owner'], CodeToDeclaredClasses::codeToCandidateNames($code));
+    }
 }

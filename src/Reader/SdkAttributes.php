@@ -35,6 +35,9 @@ final class SdkAttributes
 {
     private const CLASSES = [BidirektSchema::class, BidirektField::class, BidirektProvider::class, BidirektConsumer::class];
 
+    /** @var array<class-string, list<string>> SDK attribute class => its parameters, read once: every annotation asks */
+    private static array $parameters = [];
+
     /**
      * The names of an SDK attribute's parameters, in the order its positional arguments take them.
      *
@@ -43,7 +46,7 @@ final class SdkAttributes
      */
     public static function classToParameters(string $class): array
     {
-        return array_map(
+        return self::$parameters[$class] ??= array_map(
             static fn(ReflectionParameter $parameter): string => $parameter->getName(),
             (new ReflectionMethod($class, '__construct'))->getParameters(),
         );
@@ -153,12 +156,8 @@ final class SdkAttributes
         $warnings = [];
         foreach ($file->nodes->attributes as $attribute) {
             $name = self::attributeToSdkName($attribute);
-            $group = $attribute->getAttribute('parent');
-            $element = null;
-            if ($group instanceof AttributeGroup) {
-                $element = $group->getAttribute('parent');
-            }
-            if ($name === null || !$element instanceof Node || self::isReadOn($name, $element)) {
+            $element = $file->nodes->elementOf($attribute);
+            if ($name === null || $element === null || self::isReadOn($name, $element)) {
                 continue;
             }
             $warnings[] = new Diagnostic(

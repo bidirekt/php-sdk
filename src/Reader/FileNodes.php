@@ -6,6 +6,7 @@ namespace Bidirekt\PhpSdk\Reader;
 
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
+use PhpParser\Node\Expr\ClassConstFetch;
 use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt;
@@ -23,6 +24,8 @@ final class FileNodes
      * @param list<Attribute> $attributes
      * @param list<Stmt\Property|Param> $members
      * @param list<Node> $commented the nodes with comments
+     * @param array<int, ClassLike> $enclosingClasses node id => the class-like a member or a class constant fetch is written in
+     * @param array<int, Node> $attributeElements attribute id => the element its group is on
      */
     public function __construct(
         public array $classLikes = [],
@@ -30,5 +33,20 @@ final class FileNodes
         public array $attributes = [],
         public array $members = [],
         public array $commented = [],
+        public array $enclosingClasses = [],
+        public array $attributeElements = [],
     ) {}
+
+    /**
+     * @param Stmt\Property|Param|ClassConstFetch $node
+     */
+    public function enclosingClassOf(Node $node): ?ClassLike
+    {
+        return $this->enclosingClasses[spl_object_id($node)] ?? null;
+    }
+
+    public function elementOf(Attribute $attribute): ?Node
+    {
+        return $this->attributeElements[spl_object_id($attribute)] ?? null;
+    }
 }

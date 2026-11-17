@@ -32,8 +32,8 @@ final class ProjectToContract
 
                 continue;
             }
-            if (is_array($read)) {
-                $classes->addDeclaredClasses($read);
+            if ($read instanceof UnparsedFile) {
+                $classes->addUnparsedFile($read);
 
                 continue;
             }

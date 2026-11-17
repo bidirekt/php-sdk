@@ -11,8 +11,14 @@ use ReflectionClass;
 
 final class ClassIndex
 {
-    /** @var array<string, list<DeclaredClass>> lowercase name => where the project files declare it */
+    /** @var array<string, list<DeclaredClass>> lowercase name => where the project files read so far declare it */
     private array $project = [];
+
+    /** @var array<string, list<string>> lowercase short name => the unparsed project files that may declare a class under it */
+    private array $candidates = [];
+
+    /** @var array<string, true> paths of the unparsed files whose classes are read */
+    private array $readFiles = [];
 
     /** @var array<string, list<Diagnostic>> */
     private array $duplicateErrors = [];
@@ -40,12 +46,12 @@ final class ClassIndex
     }
 
     /**
-     * @param list<DeclaredClass> $classes of a project file read again when one of them is looked up
+     * Its classes are read when a class under one of its names is needed.
      */
-    public function addDeclaredClasses(array $classes): void
+    public function addUnparsedFile(UnparsedFile $file): void
     {
-        foreach ($classes as $class) {
-            $this->project[strtolower($class->name)][] = $class;
+        foreach ($file->names as $name) {
+            $this->candidates[$name][] = $file->path;
         }
     }
 
@@ -58,7 +64,7 @@ final class ClassIndex
     {
         $class = ltrim($class, '\\');
         $key = strtolower($class);
-        $declared = $this->project[$key] ?? [];
+        $declared = $this->projectDeclarations($key);
         if (count($declared) === 1) {
             return $this->fileLookup((string) $declared[0]->location->file, $key);
         }
@@ -102,7 +108,7 @@ final class ClassIndex
     public function duplicateErrors(string $class): array
     {
         $key = strtolower(ltrim($class, '\\'));
-        $declared = $this->project[$key] ?? [];
+        $declared = $this->projectDeclarations($key);
         if (count($declared) < 2) {
             return [];
         }
@@ -128,6 +134,36 @@ final class ClassIndex
         }
 
         return (new ReflectionClass($class))->isInternal();
+    }
+
+    /**
+     * Where the project files declare the class, the unparsed files that may declare it read first, so the
+     * declarations come in the order of the files, as if every file had been read.
+     *
+     * @return list<DeclaredClass>
+     */
+    private function projectDeclarations(string $key): array
+    {
+        $name = strtolower(SchemaNaming::classToShortName($key));
+        $paths = $this->candidates[$name] ?? [];
+        unset($this->candidates[$name]);
+        $read = [];
+        foreach ($paths as $path) {
+            if (isset($this->readFiles[$path])) {
+                continue;
+            }
+            $this->readFiles[$path] = true;
+            foreach (ParsedFiles::pathToDeclaredClasses($path) as $class) {
+                $classKey = strtolower($class->name);
+                $this->project[$classKey][] = $class;
+                $read[$classKey] = true;
+            }
+        }
+        foreach (array_keys($read) as $classKey) {
+            usort($this->project[$classKey], static fn(DeclaredClass $a, DeclaredClass $b): int => strcmp((string) $a->location->file, (string) $b->location->file));
+        }
+
+        return $this->project[$key] ?? [];
     }
 
     private function fileLookup(string $path, string $key): ClassLookup

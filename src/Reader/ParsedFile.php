@@ -22,11 +22,12 @@ final class ParsedFile
     private array $locations = [];
 
     /**
-     * @param list<Node> $statements with names resolved, the original kept in the "originalName" attribute
+     * @param list<Node> $statements with the names the reader reads resolved, the original kept in the "originalName" attribute
      * @param list<Token> $tokens
      */
     public function __construct(
         public string $path,
+        public string $code,
         public array $statements,
         public array $tokens,
         public FileNodes $nodes,
@@ -53,13 +54,12 @@ final class ParsedFile
      */
     public function textOf(Node $node): string
     {
-        $start = $node->getStartTokenPos();
+        $start = $node->getStartFilePos();
         if ($start < 0) {
             return '';
         }
-        $tokens = array_slice($this->tokens, $start, $node->getEndTokenPos() - $start + 1);
 
-        return (string) preg_replace('/\s+/', ' ', implode('', array_column($tokens, 'text')));
+        return (string) preg_replace('/\s+/', ' ', substr($this->code, $start, $node->getEndFilePos() - $start + 1));
     }
 
     /**

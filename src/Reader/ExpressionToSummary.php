@@ -123,7 +123,7 @@ final class ExpressionToSummary
         $enclosingIsClass = false;
         if ($fetch->class->isSpecialClassName()) {
             $special = $fetch->class->toLowerString();
-            $enclosing = NodeToEnclosingClass::nodeToEnclosingClass($fetch);
+            $enclosing = $file->nodes->enclosingClassOf($fetch);
             $enclosingClass = $enclosing?->namespacedName?->toString();
             $enclosingIsClass = $enclosing instanceof Class_;
             if ($enclosing instanceof Class_) {

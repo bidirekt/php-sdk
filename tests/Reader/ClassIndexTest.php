@@ -81,6 +81,18 @@ final class ClassIndexTest extends TestCase
         self::assertSame([], $classes->duplicateErrors('App\\Owner'));
     }
 
+    public function testTakesNoClassNamedInTheCommentOfAFileThatDoesNotMentionTheSdkForADeclaration(): void
+    {
+        $this->write('src/Pet.php', "<?php\nnamespace App;\n\n#[\\Bidirekt\\PhpSdk\\BidirektSchema]\nfinal class Pet {}\n");
+        $this->write('src/Shelter.php', "<?php\nnamespace App;\n\n// the class Pet is in Pet.php\nfinal class Shelter {}\n");
+        $classes = $this->index();
+        $usedAt = new SourceLocation($this->root . '/src/Pet.php', 5);
+
+        self::assertSame([], $classes->duplicateErrors('App\\Pet'));
+        self::assertSame($this->root . '/src/Pet.php', $classes->lookup('App\\Pet', $usedAt)->declaration?->file->path);
+        self::assertSame($this->root . '/src/Shelter.php', $classes->lookup('App\\Shelter', $usedAt)->declaration?->file->path);
+    }
+
     public function testReadsAVendorClassOnDemandThroughTheAutoloadMaps(): void
     {
         $this->write('composer.json', '{}');
@@ -156,7 +168,7 @@ final class ClassIndexTest extends TestCase
 
                 continue;
             }
-            $index->addDeclaredClasses($read);
+            $index->addUnparsedFile($read);
         }
 
         return $index;

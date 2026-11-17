@@ -190,7 +190,7 @@ final class ParsedFileToSummary
         if (!self::hasFieldAttribute($attributes) && $tags->fieldTag($key) === null) {
             return null;
         }
-        $enclosing = NodeToEnclosingClass::nodeToEnclosingClass($member);
+        $enclosing = $this->file->nodes->enclosingClassOf($member);
         $owner = null;
         if ($enclosing !== null) {
             $owner = $this->classes[spl_object_id($enclosing)];
