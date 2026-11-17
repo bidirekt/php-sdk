@@ -13,8 +13,6 @@ use Bidirekt\PhpSdk\Model\RefNode;
 use Bidirekt\PhpSdk\Model\SchemaNode;
 use Bidirekt\PhpSdk\Model\SourceLocation;
 use Bidirekt\PhpSdk\Model\UnionNode;
-use PhpParser\Node\Stmt\Enum_;
-use PhpParser\Node\Stmt\Interface_;
 use PHPStan\PhpDocParser\Ast\Type\ArrayShapeNode;
 use PHPStan\PhpDocParser\Ast\Type\ArrayTypeNode;
 use PHPStan\PhpDocParser\Ast\Type\GenericTypeNode;
@@ -402,8 +400,8 @@ final class TypeToSchemaNode
         if ($name !== null) {
             return new RefNode($name);
         }
-        $description = SchemaClasses::nodeToDescription($class->node);
-        if ($class->node instanceof Enum_) {
+        $description = $class->summary->description;
+        if ($class->summary->kind === 'enum') {
             $schema = $this->schemas->enumToSchema($class);
             if ($schema instanceof NamedSchema) {
                 return new RefNode($schema->name);
@@ -411,7 +409,7 @@ final class TypeToSchemaNode
             if (is_array($schema)) {
                 return $schema;
             }
-            if ($class->node->scalarType !== null) {
+            if ($class->summary->scalarType !== null) {
                 return new PrimitiveNode('integer');
             }
 
@@ -420,7 +418,7 @@ final class TypeToSchemaNode
         if ($this->classes->isVendorClass($class)) {
             return [self::untranslatable($written, $location, $form)];
         }
-        if ($class->node instanceof Interface_) {
+        if ($class->summary->kind === 'interface') {
             return [new Diagnostic(sprintf('cannot translate %s: use a class with %s as the type', $description, $form->schemaAnnotation), $location)];
         }
 

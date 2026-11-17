@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Bidirekt\PhpSdk\Tests\Reader;
 
 use Bidirekt\PhpSdk\Reader\ParsedFile;
-use Bidirekt\PhpSdk\Reader\ParsedFiles;
+use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
 use PhpParser\Node;
 use PhpParser\Node\Attribute;
 use PhpParser\Node\Expr\ArrowFunction;
@@ -69,7 +69,7 @@ final class ParsedFileTest extends TestCase
 
     public function testLocatesEachElementAtItsOwnLineBelowItsAttributes(): void
     {
-        $parsed = (new ParsedFiles())->pathToParsed($this->file);
+        $parsed = (new PhpFileToParsed())->codeToParsed($this->file, (string) file_get_contents($this->file));
         self::assertInstanceOf(ParsedFile::class, $parsed);
         $finder = new NodeFinder();
         $closures = $finder->findInstanceOf($parsed->statements, Closure::class);
@@ -86,7 +86,7 @@ final class ParsedFileTest extends TestCase
 
     public function testLocatesAnAttributeAtItsOwnLine(): void
     {
-        $parsed = (new ParsedFiles())->pathToParsed($this->file);
+        $parsed = (new PhpFileToParsed())->codeToParsed($this->file, (string) file_get_contents($this->file));
         self::assertInstanceOf(ParsedFile::class, $parsed);
         $attributes = (new NodeFinder())->findInstanceOf($parsed->statements, Attribute::class);
 
@@ -100,7 +100,7 @@ final class ParsedFileTest extends TestCase
 
     public function testLocatesAnyOtherNodeAtItsStartLine(): void
     {
-        $parsed = (new ParsedFiles())->pathToParsed($this->file);
+        $parsed = (new PhpFileToParsed())->codeToParsed($this->file, (string) file_get_contents($this->file));
         self::assertInstanceOf(ParsedFile::class, $parsed);
 
         self::assertSame(19, $this->lineOf($parsed, (new NodeFinder())->findFirstInstanceOf($parsed->statements, Return_::class)));

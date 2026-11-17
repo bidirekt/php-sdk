@@ -10,13 +10,14 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 final class ProjectToContract
 {
     /**
-     * Each step reads the project files one by one, so only the most recently read are kept parsed.
+     * Each project file that mentions the SDK is parsed once and read into its summary, which the later steps
+     * read once every class is indexed.
      */
     public static function projectToContract(Project $project): ReadResult
     {
         $files = new ParsedFiles();
         $classes = new ClassIndex($files, $project->composer?->vendorDirectory);
-        $paths = [];
+        $summaries = [];
         $syntaxErrors = [];
         $tagErrors = [];
         $tagWarnings = [];
@@ -36,12 +37,13 @@ final class ProjectToContract
 
                 continue;
             }
-            $paths[] = $path;
-            $classes->addParsedFile($read);
             $fileTagged = FileToTaggedComments::fileToTaggedComments($read);
             array_push($tagErrors, ...$fileTagged->errors);
             array_push($tagWarnings, ...$fileTagged->warnings);
-            $schemaTags->addProjectFile($read, CommentsToSchemaTags::commentsToSchemaTags($fileTagged->comments));
+            $summary = $files->addProjectFile($read, CommentsToSchemaTags::commentsToSchemaTags($fileTagged->comments));
+            $summaries[] = $summary;
+            $classes->addFileSummary($summary);
+            $schemaTags->addProjectFile($summary);
             $fileHandlers = TagsToResources::commentsToResources($fileTagged->comments);
             array_push($tagHandlers->contract->provides, ...$fileHandlers->contract->provides);
             array_push($tagHandlers->contract->consumes, ...$fileHandlers->contract->consumes);
@@ -57,8 +59,8 @@ final class ProjectToContract
         $types = new TypeToSchemaNode($classes, $schemaClasses);
         $declaredTypes = new DeclaredTypeToSchemaNode($types);
         $declaredFields = new FieldsToProperties($declaredTypes);
-        $schemas = ClassesToSchemas::filesToSchemas($paths, $files, $classes, $schemaClasses, $schemaTags, $evaluator, new FieldToSchemaNode($types, $declaredTypes), $declaredFields);
-        $handlers = (new HandlersToResources($evaluator, $types, $declaredFields))->filesToResources($paths, $files);
+        $schemas = ClassesToSchemas::filesToSchemas($summaries, $classes, $schemaClasses, $schemaTags, $evaluator, new FieldToSchemaNode($types, $declaredTypes), $declaredFields);
+        $handlers = (new HandlersToResources($evaluator, $types, $declaredFields))->filesToResources($summaries);
         $warnings = [...$projectFiles->warnings, ...$tagWarnings, ...$schemaTags->warnings, ...$schemas->warnings, ...$attributeWarnings];
         $contract = new Contract(
             [...$handlers->contract->provides, ...$tagHandlers->contract->provides],

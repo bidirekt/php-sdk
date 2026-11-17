@@ -26,8 +26,8 @@ final class PhpFileToParsed
     }
 
     /**
-     * Every attribute, `use` and tag the SDK reads writes "bidirekt", so only a project file that does is read
-     * whole; any other is parsed for its syntax errors and the classes it declares, read again on lookup.
+     * Every attribute, `use` and tag the SDK reads writes "bidirekt", so only a project file that does is parsed;
+     * any other is scanned for the classes it declares, and parsed when one of them is looked up.
      *
      * @return ParsedFile|list<DeclaredClass>|Diagnostic
      */
@@ -36,18 +36,8 @@ final class PhpFileToParsed
         if (stripos($code, 'bidirekt') !== false) {
             return $this->codeToParsed($path, $code);
         }
-        $statements = $this->codeToStatements($path, $code);
-        if ($statements instanceof Diagnostic) {
-            return $statements;
-        }
-        $resolved = (new NodeTraverser(new NameResolver(new Collecting(), ['replaceNodes' => false])))->traverse($statements);
-        $declared = [];
-        $file = new ParsedFile($path, array_values($resolved), []);
-        foreach ($file->classDeclarations() as $declaration) {
-            $declared[] = new DeclaredClass($declaration->name, $file->locationOf($declaration->node));
-        }
 
-        return $declared;
+        return CodeToDeclaredClasses::codeToDeclaredClasses($path, $code);
     }
 
     public function codeToParsed(string $path, string $code): ParsedFile|Diagnostic
@@ -57,9 +47,11 @@ final class PhpFileToParsed
             return $statements;
         }
         $resolver = new NameResolver(new Collecting(), ['preserveOriginalNames' => true, 'replaceNodes' => true]);
-        $traverser = new NodeTraverser($resolver, new NameContextVisitor($resolver), new ParentConnectingVisitor());
+        $nodes = new FileNodesVisitor();
+        $traverser = new NodeTraverser($resolver, new NameContextVisitor(), new ParentConnectingVisitor(), $nodes);
+        $resolved = array_values($traverser->traverse($statements));
 
-        return new ParsedFile($path, array_values($traverser->traverse($statements)), array_values($this->parser->getTokens()));
+        return new ParsedFile($path, $resolved, array_values($this->parser->getTokens()), $nodes->nodes);
     }
 
     /**

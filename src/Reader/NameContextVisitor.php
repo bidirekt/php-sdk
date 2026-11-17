@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Reader;
 
-use PhpParser\ErrorHandler\Throwing;
+use PhpParser\ErrorHandler\Collecting;
 use PhpParser\NameContext;
 use PhpParser\Node;
 use PhpParser\Node\Name;
@@ -13,12 +13,12 @@ use PhpParser\Node\Name\Relative;
 use PhpParser\Node\Stmt\GroupUse;
 use PhpParser\Node\Stmt\Namespace_;
 use PhpParser\Node\Stmt\Use_;
-use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitorAbstract;
 
 /**
- * Keeps the NameResolver's context (namespace and `use` aliases) on every node, because the NameResolver
- * does not resolve the names written in docblocks. Runs after the NameResolver in the same traverser.
+ * Keeps the namespace and `use` aliases in force on every node, because the NameResolver does not resolve the
+ * names written in docblocks. Its contexts are built from names of their own, not the tree's, so the summaries
+ * that keep one outlive the tree.
  */
 final class NameContextVisitor extends NodeVisitorAbstract
 {
@@ -26,10 +26,9 @@ final class NameContextVisitor extends NodeVisitorAbstract
 
     private NameContext $context;
 
-    public function __construct(
-        private NameResolver $resolver,
-    ) {
-        $this->context = clone $resolver->getNameContext();
+    public function __construct()
+    {
+        $this->context = self::namespaceToContext(null);
     }
 
     public static function nodeToNameContext(Node $node): NameContext
@@ -38,10 +37,8 @@ final class NameContextVisitor extends NodeVisitorAbstract
         if ($context instanceof NameContext) {
             return $context;
         }
-        $global = new NameContext(new Throwing());
-        $global->startNamespace();
 
-        return $global;
+        return self::namespaceToContext(null);
     }
 
     /**
@@ -62,18 +59,41 @@ final class NameContextVisitor extends NodeVisitorAbstract
 
     public function beforeTraverse(array $nodes)
     {
-        $this->context = clone $this->resolver->getNameContext();
+        $this->context = self::namespaceToContext(null);
 
         return null;
     }
 
     public function enterNode(Node $node)
     {
-        if ($node instanceof Namespace_ || $node instanceof Use_ || $node instanceof GroupUse) {
-            $this->context = clone $this->resolver->getNameContext();
+        if ($node instanceof Namespace_) {
+            $this->context = self::namespaceToContext($node->name);
+        }
+        if ($node instanceof Use_ || $node instanceof GroupUse) {
+            $this->context = clone $this->context;
+            foreach ($node->uses as $use) {
+                $name = new Name($use->name->toString());
+                if ($node instanceof GroupUse) {
+                    $name = new Name($node->prefix->toString() . '\\' . $use->name->toString());
+                }
+                $this->context->addAlias($name, (string) $use->getAlias(), $node->type | $use->type);
+            }
         }
         $node->setAttribute(self::ATTRIBUTE, $this->context);
 
         return null;
+    }
+
+    private static function namespaceToContext(?Name $namespace): NameContext
+    {
+        $context = new NameContext(new Collecting());
+        if ($namespace === null) {
+            $context->startNamespace();
+
+            return $context;
+        }
+        $context->startNamespace(new Name($namespace->toString()));
+
+        return $context;
     }
 }

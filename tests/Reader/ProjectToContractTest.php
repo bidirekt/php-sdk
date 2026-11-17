@@ -44,14 +44,15 @@ final class ProjectToContractTest extends TestCase
         self::removeDirectory($this->home);
     }
 
-    public function testReturnsOnlyTheSyntaxErrorsOfEveryFile(): void
+    public function testReturnsOnlyTheSyntaxErrorsOfEveryFileItParses(): void
     {
         $this->write('owner.php', "<?php\n\nfinal class Owner\n{\n    #[BidirektField]\n    public string \$name;\n");
-        $this->write('pet.php', "<?php\n\nfinal class Pet\n{\n    public string \$broken =;\n}\n");
+        $this->write('pet.php', "<?php\n\nfinal class Pet\n{\n    #[BidirektField]\n    public string \$broken =;\n}\n");
+        $this->write('helper.php', "<?php\n\nfinal class Helper\n{\n    public string \$broken =;\n}\n");
 
         self::assertEquals(new ReadResult(new Contract(), [
             new Diagnostic('syntax error: unexpected EOF: fix the code so PHP can parse it', new SourceLocation($this->root . '/owner.php', 7)),
-            new Diagnostic("syntax error: unexpected ';': fix the code so PHP can parse it", new SourceLocation($this->root . '/pet.php', 5)),
+            new Diagnostic("syntax error: unexpected ';': fix the code so PHP can parse it", new SourceLocation($this->root . '/pet.php', 6)),
         ], []), $this->read());
     }
 

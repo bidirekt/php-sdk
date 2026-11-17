@@ -8,7 +8,7 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Reader\CommentTag;
 use Bidirekt\PhpSdk\Reader\FileToTaggedComments;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
-use Bidirekt\PhpSdk\Reader\ParsedFiles;
+use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
 use Bidirekt\PhpSdk\Reader\TaggedComments;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt\Expression;
@@ -59,6 +59,25 @@ final class FileToTaggedCommentsTest extends TestCase
         );
     }
 
+    public function testAnAtSignInsideClosedQuotesDoesNotEndTheTagAndAForeignTagAfterThemDoes(): void
+    {
+        $read = $this->read("<?php\n/**\n * @bidirekt field description=\"mail me @home\"\n * @bidirekt field description=\"ask @vet\" @see Owner\n * @bidirekt field description=\"seen at\n *   noon @daily\" @since 2\n * @bidirekt field description=\"open @home\n */\nfunction pets() {}\n");
+
+        self::assertSame(
+            [
+                ['field', ['description="mail me @home"'], 3],
+                ['field', ['description="ask @vet"'], 4],
+                ['field', ["description=\"seen at\nnoon @daily\""], 5],
+                ['field', ['description="open'], 7],
+            ],
+            self::tagsToRows($read->comments[0]->tags),
+        );
+        self::assertSame(
+            'cannot read "@bidirekt field description="open": remove the quotes, only description="<text>" takes them',
+            $read->comments[0]->tags[3]->error?->message,
+        );
+    }
+
     public function testBindsADocblockBeforeAClosurePassedToACallToTheClosureAndAboveARouteCallToTheStatement(): void
     {
         $read = $this->read("<?php\n/** @bidirekt provides GET /a */\n\$app->get('/a', fn () => 1);\n\$app->get('/b', /** @bidirekt provides GET /b */ function () {});\n");
@@ -106,7 +125,7 @@ final class FileToTaggedCommentsTest extends TestCase
     private function read(string $code): TaggedComments
     {
         file_put_contents($this->path, $code);
-        $file = (new ParsedFiles())->pathToParsed($this->path);
+        $file = (new PhpFileToParsed())->codeToParsed($this->path, (string) file_get_contents($this->path));
         self::assertInstanceOf(ParsedFile::class, $file);
 
         return FileToTaggedComments::fileToTaggedComments($file);

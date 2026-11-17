@@ -25,7 +25,6 @@ use PhpParser\Node\Stmt\EnumCase;
 use PhpParser\Node\Stmt\Function_;
 use PhpParser\Node\Stmt\Interface_;
 use PhpParser\Node\Stmt\Trait_;
-use PhpParser\NodeFinder;
 use ReflectionMethod;
 use ReflectionParameter;
 
@@ -75,7 +74,7 @@ final class SdkAttributes
             foreach ($group->attrs as $attribute) {
                 $name = self::attributeToSdkName($attribute);
                 if ($name !== null) {
-                    $found[] = new SdkAttribute($name, $attribute, $file->locationOf($attribute));
+                    $found[] = new SdkAttribute($name, ExpressionToSummary::argumentsToSummaries($attribute->args, $file), $file->locationOf($attribute));
                 }
             }
         }
@@ -108,7 +107,7 @@ final class SdkAttributes
     public static function fileToMissingUseWarnings(ParsedFile $file): array
     {
         $warnings = [];
-        foreach ((new NodeFinder())->findInstanceOf($file->statements, Attribute::class) as $attribute) {
+        foreach ($file->nodes->attributes as $attribute) {
             $class = self::nameToUnimportedClass($attribute->name, $attribute);
             if ($class === null) {
                 continue;
@@ -152,7 +151,7 @@ final class SdkAttributes
     public static function fileToMisplacedWarnings(ParsedFile $file): array
     {
         $warnings = [];
-        foreach ((new NodeFinder())->findInstanceOf($file->statements, Attribute::class) as $attribute) {
+        foreach ($file->nodes->attributes as $attribute) {
             $name = self::attributeToSdkName($attribute);
             $group = $attribute->getAttribute('parent');
             $element = null;

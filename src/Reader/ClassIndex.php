@@ -32,10 +32,10 @@ final class ClassIndex
         private ?string $vendorDirectory,
     ) {}
 
-    public function addParsedFile(ParsedFile $file): void
+    public function addFileSummary(FileSummary $file): void
     {
         foreach ($file->classDeclarations() as $declaration) {
-            $this->project[strtolower($declaration->name)][] = new DeclaredClass($declaration->name, $file->locationOf($declaration->node));
+            $this->project[strtolower($declaration->name)][] = new DeclaredClass($declaration->name, $declaration->summary->location);
         }
     }
 
@@ -132,12 +132,12 @@ final class ClassIndex
 
     private function fileLookup(string $path, string $key): ClassLookup
     {
-        $parsed = $this->files->pathToParsed($path);
-        if ($parsed instanceof Diagnostic) {
-            return new ClassLookup(null, [$parsed]);
+        $summary = $this->files->pathToSummary($path);
+        if ($summary instanceof Diagnostic) {
+            return new ClassLookup(null, [$summary]);
         }
 
-        return new ClassLookup($parsed->classDeclarationNamed($key));
+        return new ClassLookup($summary->classDeclarationNamed($key));
     }
 
     /**

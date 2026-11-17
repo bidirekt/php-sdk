@@ -7,28 +7,7 @@ namespace Bidirekt\PhpSdk\Reader;
 use Bidirekt\PhpSdk\BidirektField;
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
-use PhpParser\Node;
-use PhpParser\Node\Arg;
-use PhpParser\Node\Expr;
-use PhpParser\Node\Expr\Array_;
-use PhpParser\Node\Expr\ClassConstFetch;
-use PhpParser\Node\Expr\ConstFetch;
-use PhpParser\Node\Expr\New_;
-use PhpParser\Node\Expr\PropertyFetch;
-use PhpParser\Node\Expr\UnaryMinus;
-use PhpParser\Node\Expr\UnaryPlus;
-use PhpParser\Node\Identifier;
-use PhpParser\Node\Name;
-use PhpParser\Node\Scalar\Float_;
-use PhpParser\Node\Scalar\Int_;
-use PhpParser\Node\Scalar\String_;
-use PhpParser\Node\Stmt\Class_;
-use PhpParser\Node\Stmt\ClassConst;
-use PhpParser\Node\Stmt\ClassLike;
-use PhpParser\Node\Stmt\Enum_;
-use PhpParser\Node\Stmt\EnumCase;
-use PhpParser\Node\Stmt\Interface_;
-use PhpParser\Node\Stmt\TraitUse;
+use LogicException;
 
 /**
  * Evaluates the expressions PHP allows in an attribute without running anything: literals, arrays,
@@ -58,22 +37,22 @@ final class ConstantExpressionToValue
     /**
      * @return ConstantValue|list<Diagnostic>
      */
-    public function expressionToValue(Expr $expression, ParsedFile $file): ConstantValue|array
+    public function expressionToValue(ExpressionSummary $expression): ConstantValue|array
     {
-        return $this->expressionToValueResolving($expression, $file, []);
+        return $this->expressionToValueResolving($expression, []);
     }
 
     /**
      * Names the arguments after the parameters, in their order when positional, and evaluates each.
      *
-     * @param array<Node> $arguments
+     * @param list<ArgumentSummary> $arguments
      * @param list<string> $parameters
      * @param string $what how the message names the attribute, like "#[BidirektField]"
      * @return AttributeArguments|list<Diagnostic>
      */
-    public function argumentsToNamed(array $arguments, array $parameters, string $what, SourceLocation $location, ParsedFile $file): AttributeArguments|array
+    public function argumentsToNamed(array $arguments, array $parameters, string $what, SourceLocation $location): AttributeArguments|array
     {
-        $named = $this->argumentsToNamedAndErrors($arguments, $parameters, $what, $location, $file);
+        $named = $this->argumentsToNamedAndErrors($arguments, $parameters, $what, $location);
         if ($named->errors !== []) {
             return $named->errors;
         }
@@ -84,31 +63,31 @@ final class ConstantExpressionToValue
     /**
      * Like argumentsToNamed(), keeping the arguments that can be read beside the errors of the others.
      *
-     * @param array<Node> $arguments
+     * @param list<ArgumentSummary> $arguments
      * @param list<string> $parameters
      */
-    public function argumentsToNamedAndErrors(array $arguments, array $parameters, string $what, SourceLocation $location, ParsedFile $file): AttributeArguments
+    public function argumentsToNamedAndErrors(array $arguments, array $parameters, string $what, SourceLocation $location): AttributeArguments
     {
-        return $this->argumentsToNamedResolving($arguments, $parameters, $what, $location, $file, []);
+        return $this->argumentsToNamedResolving($arguments, $parameters, $what, $location, []);
     }
 
     /**
-     * @param array<Node> $arguments
+     * @param list<ArgumentSummary> $arguments
      * @param list<string> $parameters
      * @param array<string, true> $resolving the constants being evaluated, to stop at one that refers to itself
      */
-    private function argumentsToNamedResolving(array $arguments, array $parameters, string $what, SourceLocation $location, ParsedFile $file, array $resolving): AttributeArguments
+    private function argumentsToNamedResolving(array $arguments, array $parameters, string $what, SourceLocation $location, array $resolving): AttributeArguments
     {
         $values = [];
         $errors = [];
         $named = false;
-        foreach (array_values($arguments) as $position => $argument) {
-            if (!$argument instanceof Arg || $argument->unpack || $argument->byRef) {
-                $errors[] = new Diagnostic(sprintf('cannot read this argument of %s: write each argument in place', $what), $file->locationOf($argument));
+        foreach ($arguments as $position => $argument) {
+            if ($argument->value === null) {
+                $errors[] = new Diagnostic(sprintf('cannot read this argument of %s: write each argument in place', $what), $argument->location);
 
                 continue;
             }
-            $name = $this->argumentToName($argument, $position, $named, $parameters, $what, $file);
+            $name = self::argumentToName($argument, $position, $named, $parameters, $what);
             $named = $named || $argument->name !== null;
             if ($name instanceof Diagnostic) {
                 $errors[] = $name;
@@ -116,11 +95,11 @@ final class ConstantExpressionToValue
                 continue;
             }
             if (isset($values[$name])) {
-                $errors[] = new Diagnostic(sprintf('"%s" is passed more than once to %s: keep one', $name, $what), $file->locationOf($argument));
+                $errors[] = new Diagnostic(sprintf('"%s" is passed more than once to %s: keep one', $name, $what), $argument->location);
 
                 continue;
             }
-            $value = $this->expressionToValueResolving($argument->value, $file, $resolving);
+            $value = $this->expressionToValueResolving($argument->value, $resolving);
             if (is_array($value)) {
                 array_push($errors, ...$value);
 
@@ -138,26 +117,25 @@ final class ConstantExpressionToValue
     /**
      * @param list<string> $parameters
      */
-    private function argumentToName(Arg $argument, int $position, bool $afterNamed, array $parameters, string $what, ParsedFile $file): string|Diagnostic
+    private static function argumentToName(ArgumentSummary $argument, int $position, bool $afterNamed, array $parameters, string $what): string|Diagnostic
     {
         if ($argument->name !== null) {
-            $name = $argument->name->toString();
-            if (!in_array($name, $parameters, true)) {
+            if (!in_array($argument->name, $parameters, true)) {
                 return new Diagnostic(
-                    sprintf('unknown argument "%s" in %s: write %s', $name, $what, NamesToChoice::namesToChoice($parameters)),
-                    $file->locationOf($argument->name),
+                    sprintf('unknown argument "%s" in %s: write %s', $argument->name, $what, NamesToChoice::namesToChoice($parameters)),
+                    $argument->nameLocation ?? $argument->location,
                 );
             }
 
-            return $name;
+            return $argument->name;
         }
         if ($afterNamed) {
-            return new Diagnostic(sprintf('a positional argument follows a named one in %s: name it', $what), $file->locationOf($argument));
+            return new Diagnostic(sprintf('a positional argument follows a named one in %s: name it', $what), $argument->location);
         }
         if (!isset($parameters[$position])) {
             return new Diagnostic(
                 sprintf('%s takes at most %d arguments: remove the extra ones', $what, count($parameters)),
-                $file->locationOf($argument),
+                $argument->location,
             );
         }
 
@@ -168,93 +146,84 @@ final class ConstantExpressionToValue
      * @param array<string, true> $resolving
      * @return ConstantValue|list<Diagnostic>
      */
-    private function expressionToValueResolving(Expr $expression, ParsedFile $file, array $resolving): ConstantValue|array
+    private function expressionToValueResolving(ExpressionSummary $expression, array $resolving): ConstantValue|array
     {
-        $location = $file->locationOf($expression);
-        if ($expression instanceof Int_) {
-            return new ConstantValue($expression->value, $location, self::intToLiteral($expression));
+        if ($expression instanceof LiteralSummary) {
+            return new ConstantValue($expression->value, $expression->location, $expression->intLiteral);
         }
-        if ($expression instanceof String_ || $expression instanceof Float_) {
-            return new ConstantValue($expression->value, $location);
+        if ($expression instanceof SignedSummary) {
+            return $this->signedToValue($expression, $resolving);
         }
-        if ($expression instanceof ConstFetch && in_array($expression->name->toLowerString(), ['true', 'false', 'null'], true)) {
-            return new ConstantValue(constant($expression->name->toLowerString()), $location);
+        if ($expression instanceof ArraySummary) {
+            return $this->arrayToValue($expression, $resolving);
         }
-        if ($expression instanceof UnaryMinus || $expression instanceof UnaryPlus) {
-            return $this->signedToValue($expression, $file, $resolving);
+        if ($expression instanceof ClassConstantSummary) {
+            return $this->classConstantToValue($expression, $resolving);
         }
-        if ($expression instanceof Array_) {
-            return $this->arrayToValue($expression, $file, $resolving);
+        if ($expression instanceof EnumValueSummary) {
+            return $this->enumCaseValueToValue($expression->case, $resolving);
         }
-        if ($expression instanceof ClassConstFetch) {
-            return $this->classConstantToValue($expression, $file, $resolving);
-        }
-        if ($expression instanceof PropertyFetch && $expression->var instanceof ClassConstFetch && $expression->name instanceof Identifier && $expression->name->toString() === 'value') {
-            return $this->enumCaseValueToValue($expression->var, $file, $resolving);
-        }
-        if ($expression instanceof New_ && $expression->class instanceof Name && strtolower($expression->class->toString()) === strtolower(BidirektField::class)) {
-            $arguments = $this->argumentsToNamedResolving($expression->args, SdkAttributes::classToParameters(BidirektField::class), 'new BidirektField(…)', $location, $file, $resolving);
+        if ($expression instanceof NewFieldSummary) {
+            $arguments = $this->argumentsToNamedResolving($expression->arguments, SdkAttributes::classToParameters(BidirektField::class), 'new BidirektField(…)', $expression->location, $resolving);
             if ($arguments->errors !== []) {
                 return $arguments->errors;
             }
 
-            return new ConstantValue(new FieldConstruction($arguments), $location);
+            return new ConstantValue(new FieldConstruction($arguments), $expression->location);
         }
-        if ($expression instanceof New_ && $expression->class instanceof Name && SdkAttributes::nameToUnimportedClass($expression->class, $expression) === BidirektField::class) {
+        if ($expression instanceof UnimportedFieldSummary) {
             return [new Diagnostic(
-                sprintf('new BidirektField(…) resolves to "%s", so it is not read: write use %s', $expression->class->toString(), BidirektField::class),
-                $location,
+                sprintf('new BidirektField(…) resolves to "%s", so it is not read: write use %s', $expression->class, BidirektField::class),
+                $expression->location,
             )];
         }
+        if ($expression instanceof UnreadableSummary) {
+            return [self::unreadable($expression->text, $expression->location)];
+        }
 
-        return [self::unreadable($expression, $file)];
+        throw new LogicException(sprintf('no evaluation for %s', $expression::class));
     }
 
     /**
      * @param array<string, true> $resolving
      * @return ConstantValue|list<Diagnostic>
      */
-    private function signedToValue(UnaryMinus|UnaryPlus $expression, ParsedFile $file, array $resolving): ConstantValue|array
+    private function signedToValue(SignedSummary $expression, array $resolving): ConstantValue|array
     {
-        $operand = $this->expressionToValueResolving($expression->expr, $file, $resolving);
+        $operand = $this->expressionToValueResolving($expression->operand, $resolving);
         if (is_array($operand)) {
             return $operand;
         }
         if (!is_int($operand->value) && !is_float($operand->value)) {
-            return [self::unreadable($expression, $file)];
+            return [self::unreadable($expression->text, $expression->location)];
         }
         $value = $operand->value;
-        if ($expression instanceof UnaryMinus) {
+        if ($expression->negative) {
             $value = -$value;
         }
 
-        return new ConstantValue($value, $file->locationOf($expression));
+        return new ConstantValue($value, $expression->location);
     }
 
     /**
      * @param array<string, true> $resolving
      * @return ConstantValue|list<Diagnostic>
      */
-    private function arrayToValue(Array_ $array, ParsedFile $file, array $resolving): ConstantValue|array
+    private function arrayToValue(ArraySummary $array, array $resolving): ConstantValue|array
     {
         $items = [];
         $errors = [];
         foreach ($array->items as $item) {
-            if ($item->unpack || $item->byRef) {
-                $errors[] = self::unreadable($item, $file);
-
-                continue;
-            }
             $key = null;
             if ($item->key !== null) {
-                $key = $this->expressionToValueResolving($item->key, $file, $resolving);
+                $key = $this->expressionToValueResolving($item->key, $resolving);
                 if (is_array($key)) {
                     array_push($errors, ...$key);
 
                     continue;
                 }
             }
-            $value = $this->expressionToValueResolving($item->value, $file, $resolving);
+            $value = $this->expressionToValueResolving($item->value, $resolving);
             if (is_array($value)) {
                 array_push($errors, ...$value);
 
@@ -266,27 +235,24 @@ final class ConstantExpressionToValue
             return $errors;
         }
 
-        return new ConstantValue(new ConstantArray($items), $file->locationOf($array));
+        return new ConstantValue(new ConstantArray($items), $array->location);
     }
 
     /**
      * @param array<string, true> $resolving
      * @return ConstantValue|list<Diagnostic>
      */
-    private function classConstantToValue(ClassConstFetch $fetch, ParsedFile $file, array $resolving): ConstantValue|array
+    private function classConstantToValue(ClassConstantSummary $fetch, array $resolving): ConstantValue|array
     {
-        $location = $file->locationOf($fetch);
-        if (!$fetch->name instanceof Identifier) {
-            return [self::unreadable($fetch, $file)];
-        }
-        $class = $this->classNameToFullyQualified($fetch, $file);
+        $location = $fetch->location;
+        $class = $this->fetchToClass($fetch);
         if ($class instanceof Diagnostic) {
             return [$class];
         }
-        if ($fetch->name->toLowerString() === 'class') {
+        if (strtolower($fetch->constant) === 'class') {
             return new ConstantValue(new ClassReference($class), $location);
         }
-        $constant = $fetch->name->toString();
+        $constant = $fetch->constant;
         $shown = sprintf('%s::%s', SchemaNaming::classToShortName($class), $constant);
         $key = strtolower($class) . '::' . $constant;
         if (isset($resolving[$key])) {
@@ -303,7 +269,7 @@ final class ConstantExpressionToValue
         if ($found === null) {
             return [self::missingConstant($declaration, $constant, $shown, $location)];
         }
-        $value = $this->withScope(null)->expressionToValueResolving($found->value, $found->owner->file, $resolving + [$key => true]);
+        $value = $this->withScope(null)->expressionToValueResolving($found->value, $resolving + [$key => true]);
         if (is_array($value)) {
             return $value;
         }
@@ -315,18 +281,15 @@ final class ConstantExpressionToValue
      * @param array<string, true> $resolving
      * @return ConstantValue|list<Diagnostic>
      */
-    private function enumCaseValueToValue(ClassConstFetch $fetch, ParsedFile $file, array $resolving): ConstantValue|array
+    private function enumCaseValueToValue(ClassConstantSummary $fetch, array $resolving): ConstantValue|array
     {
-        $location = $file->locationOf($fetch);
-        if (!$fetch->name instanceof Identifier) {
-            return [self::unreadable($fetch, $file)];
-        }
-        $class = $this->classNameToFullyQualified($fetch, $file);
+        $location = $fetch->location;
+        $class = $this->fetchToClass($fetch);
         if ($class instanceof Diagnostic) {
             return [$class];
         }
-        $shown = sprintf('%s::%s', SchemaNaming::classToShortName($class), $fetch->name->toString());
-        $key = strtolower($class) . '::' . $fetch->name->toString() . '->value';
+        $shown = sprintf('%s::%s', SchemaNaming::classToShortName($class), $fetch->constant);
+        $key = strtolower($class) . '::' . $fetch->constant . '->value';
         if (isset($resolving[$key])) {
             return [new Diagnostic(sprintf('enum case "%s" refers to itself: give it a value', $shown), $location)];
         }
@@ -334,20 +297,20 @@ final class ConstantExpressionToValue
         if (!$declaration instanceof ClassDeclaration) {
             return $declaration;
         }
-        $case = self::enumToCase($declaration->node, $fetch->name->toString());
+        $case = self::enumToCase($declaration->summary, $fetch->constant);
         if ($case === null) {
             return [new Diagnostic(
                 sprintf('enum case "%s" is not declared: write a case of enum "%s"', $shown, SchemaNaming::classToShortName($class)),
                 $location,
             )];
         }
-        if ($case->expr === null) {
+        if ($case->value === null) {
             return [new Diagnostic(
                 sprintf('enum "%s" has no values, so "%s->value" cannot be read: give its cases values', SchemaNaming::classToShortName($class), $shown),
                 $location,
             )];
         }
-        $value = $this->withScope(null)->expressionToValueResolving($case->expr, $declaration->file, $resolving + [$key => true]);
+        $value = $this->withScope(null)->expressionToValueResolving($case->value, $resolving + [$key => true]);
         if (is_array($value)) {
             return $value;
         }
@@ -355,35 +318,38 @@ final class ConstantExpressionToValue
         return new ConstantValue($value->value, $location, $value->intLiteral);
     }
 
-    private function classNameToFullyQualified(ClassConstFetch $fetch, ParsedFile $file): string|Diagnostic
+    /**
+     * The class the fetch names: `self`, `static` and `parent` stand for the class it is written in, or for
+     * the scope's classes when one is set.
+     */
+    private function fetchToClass(ClassConstantSummary $fetch): string|Diagnostic
     {
-        if (!$fetch->class instanceof Name) {
-            return self::unreadable($fetch, $file);
+        if ($fetch->special === null) {
+            return $fetch->class;
         }
-        if (!$fetch->class->isSpecialClassName()) {
-            return $fetch->class->toString();
-        }
-        $enclosing = NodeToEnclosingClass::nodeToEnclosingClass($fetch);
+        $name = $fetch->enclosingClass;
+        $isClass = $fetch->enclosingIsClass;
+        $parent = $fetch->enclosingParent;
         if ($this->scope !== null) {
-            $enclosing = $this->scope->selfClass->node;
+            $enclosing = $this->scope->selfClass->summary;
+            if ($fetch->special === 'static') {
+                $enclosing = $this->scope->staticClass->summary;
+            }
+            $name = $enclosing->name;
+            $isClass = $enclosing->kind === 'class';
+            $parent = $enclosing->parent?->resolved;
         }
-        if ($this->scope !== null && $fetch->class->toLowerString() === 'static') {
-            $enclosing = $this->scope->staticClass->node;
+        if ($name === null) {
+            return self::unreadable($fetch->text, $fetch->location);
         }
-        if ($enclosing === null || $enclosing->namespacedName === null) {
-            return self::unreadable($fetch, $file);
+        if ($fetch->special !== 'parent') {
+            return $name;
         }
-        if ($fetch->class->toLowerString() !== 'parent') {
-            return $enclosing->namespacedName->toString();
-        }
-        if (!$enclosing instanceof Class_ || $enclosing->extends === null) {
-            return new Diagnostic(
-                sprintf('"%s" has no parent: write the class that declares it', $file->textOf($fetch)),
-                $file->locationOf($fetch),
-            );
+        if (!$isClass || $parent === null) {
+            return new Diagnostic(sprintf('"%s" has no parent: write the class that declares it', $fetch->text), $fetch->location);
         }
 
-        return $enclosing->extends->toString();
+        return $parent;
     }
 
     /**
@@ -410,42 +376,31 @@ final class ConstantExpressionToValue
      * The constant's expression and the class that declares it, searched in the class, its traits,
      * its parent and its interfaces, as PHP does.
      *
-     * @param array<string, true> $visited node keys
+     * @param array<int, true> $visited summary ids
      * @return ClassConstant|list<Diagnostic>|null
      */
     private function declarationToConstant(ClassDeclaration $declaration, string $constant, array $visited): ClassConstant|array|null
     {
-        $id = $declaration->file->nodeToKey($declaration->node);
-        if (isset($visited[$id])) {
+        $class = $declaration->summary;
+        if (isset($visited[spl_object_id($class)])) {
             return null;
         }
-        $visited[$id] = true;
-        $location = $declaration->file->locationOf($declaration->node);
+        $visited[spl_object_id($class)] = true;
+        if (isset($class->constants[$constant])) {
+            return new ClassConstant($class->constants[$constant], $declaration);
+        }
         $related = [];
-        foreach ($declaration->node->stmts as $statement) {
-            if ($statement instanceof ClassConst) {
-                foreach ($statement->consts as $const) {
-                    if ($const->name->toString() === $constant) {
-                        return new ClassConstant($const->value, $declaration);
-                    }
-                }
-            }
-            if ($statement instanceof TraitUse) {
-                array_push($related, ...$statement->traits);
+        foreach ($class->members as $member) {
+            if ($member instanceof TraitUseSummary) {
+                array_push($related, ...$member->traits);
             }
         }
-        $node = $declaration->node;
-        if ($node instanceof Class_ && $node->extends !== null) {
-            $related[] = $node->extends;
+        if ($class->parent !== null) {
+            $related[] = $class->parent;
         }
-        if ($node instanceof Class_ || $node instanceof Enum_) {
-            array_push($related, ...$node->implements);
-        }
-        if ($node instanceof Interface_) {
-            array_push($related, ...$node->extends);
-        }
+        array_push($related, ...$class->interfaces);
         foreach ($related as $name) {
-            $lookup = $this->classes->lookup($name->toString(), $location);
+            $lookup = $this->classes->lookup($name->resolved, $class->location);
             if ($lookup->errors !== []) {
                 return $lookup->errors;
             }
@@ -463,48 +418,33 @@ final class ConstantExpressionToValue
 
     private static function missingConstant(ClassDeclaration $declaration, string $constant, string $shown, SourceLocation $location): Diagnostic
     {
-        if (self::enumToCase($declaration->node, $constant) !== null) {
+        if (self::enumToCase($declaration->summary, $constant) !== null) {
             return new Diagnostic(sprintf('"%s" is an enum case, not a value: write %s->value', $shown, $shown), $location);
         }
 
         return new Diagnostic(
-            sprintf('constant "%s" is not declared: declare it in %s or one of its parents', $shown, SchemaClasses::nodeToDescription($declaration->node)),
+            sprintf('constant "%s" is not declared: declare it in %s or one of its parents', $shown, $declaration->summary->description),
             $location,
         );
     }
 
-    private static function enumToCase(ClassLike $node, string $name): ?EnumCase
+    private static function enumToCase(ClassSummary $class, string $name): ?EnumCaseSummary
     {
-        if (!$node instanceof Enum_) {
-            return null;
-        }
-        foreach ($node->stmts as $statement) {
-            if ($statement instanceof EnumCase && $statement->name->toString() === $name) {
-                return $statement;
-            }
-        }
-
-        return null;
-    }
-
-    private static function intToLiteral(Int_ $literal): ?string
-    {
-        $raw = $literal->getAttribute('rawValue');
-        if (!is_string($raw)) {
+        if ($class->kind !== 'enum') {
             return null;
         }
 
-        return $raw;
+        return $class->caseNamed($name);
     }
 
-    private static function unreadable(Node $expression, ParsedFile $file): Diagnostic
+    private static function unreadable(string $text, SourceLocation $location): Diagnostic
     {
         return new Diagnostic(
             sprintf(
                 '"%s" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value',
-                $file->textOf($expression),
+                $text,
             ),
-            $file->locationOf($expression),
+            $location,
         );
     }
 }

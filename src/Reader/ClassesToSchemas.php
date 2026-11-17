@@ -10,18 +10,6 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\NamedSchema;
 use Bidirekt\PhpSdk\Model\ObjectNode;
 use Bidirekt\PhpSdk\Model\Property;
-use PhpParser\Node;
-use PhpParser\Node\Name;
-use PhpParser\Node\Param;
-use PhpParser\Node\PropertyItem;
-use PhpParser\Node\Stmt;
-use PhpParser\Node\Stmt\Class_;
-use PhpParser\Node\Stmt\ClassLike;
-use PhpParser\Node\Stmt\ClassMethod;
-use PhpParser\Node\Stmt\Enum_;
-use PhpParser\Node\Stmt\Trait_;
-use PhpParser\Node\Stmt\TraitUse;
-use PhpParser\NodeFinder;
 
 /**
  * Reads the classes and enums with `#[BidirektSchema]` into named schemas, their fields being the
@@ -29,21 +17,19 @@ use PhpParser\NodeFinder;
  */
 final class ClassesToSchemas
 {
-    private const PROPERTY_DOCBLOCK = 'in the docblock above the property and its attributes';
-
     /** @var list<Diagnostic> */
     private array $errors = [];
 
     /** @var list<Diagnostic> */
     private array $warnings = [];
 
-    /** @var array<string, true> node keys of the class-likes read as a schema, or as a parent or trait of one */
+    /** @var array<int, true> summary ids, which a summary keeps for the whole read, of the class-likes read as a schema, or as a parent or trait of one */
     private array $readClasses = [];
 
     /** @var list<NamedSchema> the classes whose schema annotation has errors */
     private array $unreadSchemas = [];
 
-    /** @var array<string, Property|null> member node key, with the scope keys when it writes self, static or parent => its property, null when it cannot be read */
+    /** @var array<int|string, Property|null> member summary id, with the scope's class ids when it writes self, static or parent => its property, null when it cannot be read */
     private array $properties = [];
 
     private function __construct(
@@ -58,11 +44,10 @@ final class ClassesToSchemas
     /**
      * The enum schemas are left in `$schemas`, to be taken once every reference to them is read.
      *
-     * @param list<string> $paths the project files `$files` reads whole
+     * @param list<FileSummary> $files the project files that mention the SDK
      */
     public static function filesToSchemas(
-        array $paths,
-        ParsedFiles $files,
+        array $files,
         ClassIndex $classes,
         SchemaClasses $schemas,
         SchemaTags $tags,
@@ -72,15 +57,15 @@ final class ClassesToSchemas
     ): ReadResult {
         $reader = new self($classes, $schemas, $tags, $evaluator, $fieldTypes, $declaredFields);
         $schemaClasses = [];
-        foreach ($paths as $path) {
-            $schemaClasses[$path] = $reader->fileToSchemaClasses($files->projectFile($path));
+        foreach ($files as $file) {
+            array_push($schemaClasses, ...$reader->fileToSchemaClasses($file));
         }
         $schemas = $reader->unreadSchemas;
-        foreach (array_filter($schemaClasses) as $path => $fileClasses) {
-            array_push($schemas, ...$reader->fileToSchemas($files->projectFile($path), $fileClasses));
+        foreach ($schemaClasses as [$declaration, $name, $fields, $form]) {
+            $schemas[] = $reader->classToSchema($declaration, $name, $fields, $form);
         }
-        foreach ($paths as $path) {
-            $reader->fileToFieldWarnings($files->projectFile($path));
+        foreach ($files as $file) {
+            $reader->fileToFieldWarnings($file);
         }
 
         return new ReadResult(
@@ -91,40 +76,24 @@ final class ClassesToSchemas
     }
 
     /**
-     * Registers the schema names of the file's class-likes. Nothing of the file's tree outlives the call, since
-     * a file that is not kept is parsed again each time it is read: the classes are found again by their key.
+     * Registers the schema names of the file's class-likes, so every reference resolves before a field is read.
      *
-     * @return list<array{string, string, string, ConstantValue|null, AnnotationForm}> node key, class, schema
-     *                                                                                 name, `fields:` and annotation
-     *                                                                                 of each class whose fields
-     *                                                                                 are to be read
+     * @return list<array{ClassDeclaration, string, ConstantValue|null, AnnotationForm}> the class, its schema
+     *                                                                                  name, its `fields:` and its
+     *                                                                                  annotation, for each class
+     *                                                                                  whose fields are to be read
      */
-    private function fileToSchemaClasses(ParsedFile $file): array
+    private function fileToSchemaClasses(FileSummary $file): array
     {
         $schemaClasses = [];
-        foreach ((new NodeFinder())->findInstanceOf($file->statements, ClassLike::class) as $node) {
-            $schemaClass = $this->nodeToSchemaClass($node, $file);
+        foreach ($file->classes as $class) {
+            $schemaClass = $this->classToSchemaClass($class, $file);
             if ($schemaClass !== null) {
-                [$declaration, $name, $fields, $form] = $schemaClass;
-                $schemaClasses[] = [$file->nodeToKey($declaration->node), $declaration->name, $name, $fields, $form];
+                $schemaClasses[] = $schemaClass;
             }
         }
 
         return $schemaClasses;
-    }
-
-    /**
-     * @param list<array{string, string, string, ConstantValue|null, AnnotationForm}> $schemaClasses
-     * @return list<NamedSchema>
-     */
-    private function fileToSchemas(ParsedFile $file, array $schemaClasses): array
-    {
-        $schemas = [];
-        foreach ($schemaClasses as [$key, $class, $name, $fields, $form]) {
-            $schemas[] = $this->classToSchema(new ClassDeclaration($class, $file->keyToClassLike($key), $file), $name, $fields, $form);
-        }
-
-        return $schemas;
     }
 
     /**
@@ -134,22 +103,22 @@ final class ClassesToSchemas
      *                                                                                  its `fields:` and its annotation,
      *                                                                                  when its fields are to be read
      */
-    private function nodeToSchemaClass(ClassLike $node, ParsedFile $file): ?array
+    private function classToSchemaClass(ClassSummary $class, FileSummary $file): ?array
     {
-        $read = $this->schemas->nodeToAnnotation($node, $file);
+        $read = $this->schemas->classToAnnotation($class, $file);
         if ($read === null) {
             return null;
         }
-        $this->readClasses[$file->nodeToKey($node)] = true;
+        $this->readClasses[spl_object_id($class)] = true;
         [$annotation, $errors] = $read;
         $this->addErrors($errors);
         if ($annotation === null || !$annotation->readable) {
-            $this->addUnreadClass($node, $file, $annotation?->declaredName);
+            $this->addUnreadClass($class, $annotation?->declaredName);
 
             return null;
         }
 
-        return $this->namedToSchemaClass($node, $file, $annotation->declaredName, $annotation->form, $annotation->fields);
+        return $this->namedToSchemaClass($class, $file, $annotation->declaredName, $annotation->form, $annotation->fields);
     }
 
     /**
@@ -157,24 +126,24 @@ final class ClassesToSchemas
      *
      * @return array{ClassDeclaration, string, ConstantValue|null, AnnotationForm}|null
      */
-    private function namedToSchemaClass(ClassLike $node, ParsedFile $file, ?string $declared, AnnotationForm $form, ?ConstantValue $fields): ?array
+    private function namedToSchemaClass(ClassSummary $class, FileSummary $file, ?string $declared, AnnotationForm $form, ?ConstantValue $fields): ?array
     {
-        $declaration = $this->nodeToDeclaration($node, $file, $declared, $form);
+        $declaration = $this->classToDeclaration($class, $file, $declared, $form);
         if ($declaration === null) {
             return null;
         }
         $name = SchemaNaming::schemaToName($declared, $declaration->name);
-        if ($node instanceof Enum_) {
-            $this->schemas->addEnum($file, $node, $name);
+        if ($class->kind === 'enum') {
+            $this->schemas->addEnum($class, $name);
             $schema = $this->schemas->enumToSchema($declaration);
             if (is_array($schema)) {
                 $this->addErrors($schema);
-                $this->addUnreadClass($node, $file, $declared);
+                $this->addUnreadClass($class, $declared);
             }
 
             return null;
         }
-        $this->schemas->addClass($file, $node, $name);
+        $this->schemas->addClass($class, $name);
 
         return [$declaration, $name, $fields, $form];
     }
@@ -185,42 +154,41 @@ final class ClassesToSchemas
      *
      * @param string|null $declared the name its annotation declares, when that could be read
      */
-    private function addUnreadClass(ClassLike $node, ParsedFile $file, ?string $declared): void
+    private function addUnreadClass(ClassSummary $class, ?string $declared): void
     {
-        if ((!$node instanceof Class_ && !$node instanceof Enum_) || $node->namespacedName === null) {
+        if (($class->kind !== 'class' && $class->kind !== 'enum') || $class->name === null) {
             return;
         }
-        $name = SchemaNaming::schemaToName($declared, $node->namespacedName->toString());
-        $this->schemas->addClass($file, $node, $name);
-        $this->unreadSchemas[] = new NamedSchema($name, new ObjectNode([]), $file->locationOf($node));
+        $name = SchemaNaming::schemaToName($declared, $class->name);
+        $this->schemas->addClass($class, $name);
+        $this->unreadSchemas[] = new NamedSchema($name, new ObjectNode([]), $class->location);
     }
 
     /**
      * The class-like's single declaration, or null after reporting it is declared in more than one file.
      */
-    private function nodeToDeclaration(ClassLike $node, ParsedFile $file, ?string $declaredName, AnnotationForm $form): ?ClassDeclaration
+    private function classToDeclaration(ClassSummary $class, FileSummary $file, ?string $declaredName, AnnotationForm $form): ?ClassDeclaration
     {
-        if ($node->namespacedName === null) {
+        if ($class->name === null) {
             if ($declaredName === null) {
                 $this->addErrors([new Diagnostic(
                     sprintf('cannot name an anonymous class: declare it with %s', $form->declareSchemaName),
-                    $file->locationOf($node),
+                    $class->location,
                 )]);
 
                 return null;
             }
 
-            return new ClassDeclaration($declaredName, $node, $file);
+            return new ClassDeclaration($declaredName, $class, $file);
         }
-        $class = $node->namespacedName->toString();
-        $errors = $this->classes->duplicateErrors($class);
+        $errors = $this->classes->duplicateErrors($class->name);
         if ($errors !== []) {
             $this->addErrors($errors);
 
             return null;
         }
 
-        return new ClassDeclaration($class, $node, $file);
+        return new ClassDeclaration($class->name, $class, $file);
     }
 
     /**
@@ -249,7 +217,7 @@ final class ClassesToSchemas
             $complete = $complete && $errors === [];
             $fix = 'declare at least one field in "fields"';
         }
-        $location = $declaration->file->locationOf($declaration->node);
+        $location = $declaration->summary->location;
         if ($properties === [] && $complete) {
             $this->addErrors([new Diagnostic(sprintf('schema "%s" has no field: %s', $name, $fix), $location)]);
         }
@@ -263,28 +231,28 @@ final class ClassesToSchemas
      * of the parent's, which is not translated.
      *
      * @param ClassScope $scope its `self` is the class using a trait, which a class read replaces with itself
-     * @param array<string, true> $visited node keys
+     * @param array<int, true> $visited summary ids
      * @return array{array<string, AnnotatedMember>, bool} member name => member, and whether every parent and trait could be read
      */
     private function classToMembers(ClassDeclaration $class, ClassScope $scope, array $visited): array
     {
-        $id = $class->file->nodeToKey($class->node);
+        $id = spl_object_id($class->summary);
         if (isset($visited[$id])) {
             return [[], true];
         }
         $visited[$id] = true;
         $this->readClasses[$id] = true;
         $this->tags->addFile($class->file);
-        if (!$class->node instanceof Trait_) {
+        if ($class->summary->kind !== 'trait') {
             $scope = new ClassScope($class, $scope->staticClass);
         }
         $members = [];
         $complete = true;
-        if ($class->node instanceof Class_ && $class->node->extends !== null) {
-            [$members, $complete] = $this->relatedToMembers($class->node->extends, 'parent', $class, $scope, $visited);
+        if ($class->summary->parent !== null) {
+            [$members, $complete] = $this->relatedToMembers($class->summary->parent, 'parent', $class, $scope, $visited);
         }
-        foreach ($class->node->stmts as $statement) {
-            [$own, $ownComplete] = $this->statementToMembers($statement, $class, $scope, $visited);
+        foreach ($class->summary->members as $declaration) {
+            [$own, $ownComplete] = $this->declarationToMembers($declaration, $class, $scope, $visited);
             foreach ($own as $name => $member) {
                 $members[$name] = $member;
             }
@@ -295,15 +263,15 @@ final class ClassesToSchemas
     }
 
     /**
-     * @param array<string, true> $visited node keys
+     * @param array<int, true> $visited summary ids
      * @return array{array<string, AnnotatedMember>, bool}
      */
-    private function statementToMembers(Stmt $statement, ClassDeclaration $class, ClassScope $scope, array $visited): array
+    private function declarationToMembers(TraitUseSummary|MemberDeclaration $declaration, ClassDeclaration $class, ClassScope $scope, array $visited): array
     {
-        if ($statement instanceof TraitUse) {
+        if ($declaration instanceof TraitUseSummary) {
             $members = [];
             $complete = true;
-            foreach ($statement->traits as $trait) {
+            foreach ($declaration->traits as $trait) {
                 [$traitMembers, $traitComplete] = $this->relatedToMembers($trait, 'trait', $class, $scope, $visited);
                 $members = array_merge($members, $traitMembers);
                 $complete = $complete && $traitComplete;
@@ -311,30 +279,19 @@ final class ClassesToSchemas
 
             return [$members, $complete];
         }
-        $members = [];
-        if ($statement instanceof Stmt\Property) {
-            $attributes = self::attributesNamed($statement, $class->file, 'BidirektField');
-            $tag = $this->tags->fieldTag($class->file, $statement);
-            if ($attributes === [] && $tag === null) {
-                return [[], true];
-            }
-            if ($statement->isStatic()) {
-                $this->addStaticWarning($attributes, $tag);
-
-                return [[], true];
-            }
-            foreach ($statement->props as $item) {
-                $members[$item->name->toString()] = new AnnotatedMember($item, $attributes, $tag, $statement, $class, $scope);
-            }
+        $attributes = self::fieldAttributes($declaration->attributes);
+        $tag = $class->file->tags->fieldTag($declaration->key);
+        if ($attributes === [] && $tag === null) {
+            return [[], true];
         }
-        if ($statement instanceof ClassMethod && $statement->name->toLowerString() === '__construct') {
-            foreach ($statement->params as $param) {
-                $attributes = self::attributesNamed($param, $class->file, 'BidirektField');
-                $tag = $this->tags->fieldTag($class->file, $param);
-                if (($attributes !== [] || $tag !== null) && $param->isPromoted() && $param->var instanceof Node\Expr\Variable && is_string($param->var->name)) {
-                    $members[$param->var->name] = new AnnotatedMember($param, $attributes, $tag, $statement, $class, $scope);
-                }
-            }
+        if ($declaration->static) {
+            $this->addStaticWarning($attributes, $tag);
+
+            return [[], true];
+        }
+        $members = [];
+        foreach ($declaration->members as $member) {
+            $members[$member->name] = new AnnotatedMember($member, $attributes, $tag, $scope);
         }
 
         return [$members, true];
@@ -342,13 +299,12 @@ final class ClassesToSchemas
 
     /**
      * @param 'parent'|'trait' $relation
-     * @param array<string, true> $visited node keys
+     * @param array<int, true> $visited summary ids
      * @return array{array<string, AnnotatedMember>, bool}
      */
-    private function relatedToMembers(Name $name, string $relation, ClassDeclaration $class, ClassScope $scope, array $visited): array
+    private function relatedToMembers(NameSummary $name, string $relation, ClassDeclaration $class, ClassScope $scope, array $visited): array
     {
-        $location = $class->file->locationOf($name);
-        $lookup = $this->classes->lookup($name->toString(), $location);
+        $lookup = $this->classes->lookup($name->resolved, $name->location);
         if ($lookup->errors !== []) {
             $this->addErrors($lookup->errors);
 
@@ -357,21 +313,17 @@ final class ClassesToSchemas
         if ($lookup->declaration !== null) {
             return $this->classToMembers($lookup->declaration, $scope, $visited);
         }
-        if ($relation === 'parent' && ClassIndex::isBuiltIn($name->toString(), false)) {
+        if ($relation === 'parent' && ClassIndex::isBuiltIn($name->resolved, false)) {
             return [[], true];
-        }
-        $written = $name->getAttribute('originalName');
-        if (!$written instanceof Name) {
-            $written = $name;
         }
         $this->addErrors([new Diagnostic(
             sprintf(
                 'cannot read the %s "%s" of %s: declare it in the project or require its package with composer',
                 $relation,
-                $written->toString(),
-                SchemaClasses::nodeToDescription($class->node),
+                $name->written,
+                $class->summary->description,
             ),
-            $location,
+            $name->location,
         )]);
 
         return [[], false];
@@ -392,58 +344,38 @@ final class ClassesToSchemas
 
     private function memberToProperty(AnnotatedMember $annotated): ?Property
     {
-        $owner = $annotated->owner;
         $scope = $annotated->scope;
-        $key = $owner->file->nodeToKey($annotated->member);
-        if (self::mentionsSpecialClass($annotated->member, $annotated->declaration, $owner->file)) {
-            $key .= sprintf(
-                '|%s|%s',
-                $scope->selfClass->file->nodeToKey($scope->selfClass->node),
-                $scope->staticClass->file->nodeToKey($scope->staticClass->node),
-            );
+        $key = spl_object_id($annotated->member);
+        if ($annotated->member->mentionsSpecialClass) {
+            $key .= sprintf('|%d|%d', spl_object_id($scope->selfClass->summary), spl_object_id($scope->staticClass->summary));
         }
         if (!array_key_exists($key, $this->properties)) {
-            $this->properties[$key] = $this->memberToNewProperty($annotated->member, $annotated->attributes, $annotated->tag, $annotated->declaration, $owner, $scope);
+            $this->properties[$key] = $this->memberToNewProperty($annotated->member, $annotated->attributes, $annotated->tag, $scope);
         }
 
         return $this->properties[$key];
     }
 
     /**
-     * Whether the member's type, docblocks or attributes write `self`, `static` or `parent`, which name another
-     * class for each schema that reads it.
-     */
-    private static function mentionsSpecialClass(PropertyItem|Param $member, Stmt\Property|ClassMethod $declaration, ParsedFile $file): bool
-    {
-        $written = $file->textOf($declaration) . $declaration->getDocComment()?->getText();
-        if ($member instanceof Param) {
-            $written = $file->textOf($member) . $member->getDocComment()?->getText() . $declaration->getDocComment()?->getText();
-        }
-
-        return preg_match('/\b(?:self|static|parent)\b/i', $written) === 1;
-    }
-
-    /**
      * @param list<SdkAttribute> $attributes
      */
-    private function memberToNewProperty(PropertyItem|Param $member, array $attributes, ?CommentTag $tag, Stmt\Property|ClassMethod $declaration, ClassDeclaration $owner, ClassScope $scope): ?Property
+    private function memberToNewProperty(MemberSummary $member, array $attributes, ?CommentTag $tag, ClassScope $scope): ?Property
     {
-        $memberName = SchemaNaming::memberToName($member);
         if ($tag !== null && $attributes !== []) {
             $this->addErrors([new Diagnostic('#[BidirektField] and "@bidirekt field" are both on this property: keep one', $attributes[0]->location)]);
 
             return null;
         }
         if ($tag !== null) {
-            return $this->tagToProperty($member, $memberName, $tag, $declaration, $owner, $scope);
+            return $this->tagToProperty($member, $tag, $scope);
         }
         if (count($attributes) > 1) {
-            $this->addErrors([new Diagnostic(sprintf('#[BidirektField] is written more than once on "%s": keep one', $memberName), $attributes[1]->location)]);
+            $this->addErrors([new Diagnostic(sprintf('#[BidirektField] is written more than once on "%s": keep one', $member->name), $attributes[1]->location)]);
 
             return null;
         }
         $attribute = $attributes[0];
-        $arguments = $this->evaluator->withScope($scope)->argumentsToNamed($attribute->attribute->args, SdkAttributes::classToParameters(BidirektField::class), '#[BidirektField]', $attribute->location, $owner->file);
+        $arguments = $this->evaluator->withScope($scope)->argumentsToNamed($attribute->arguments, SdkAttributes::classToParameters(BidirektField::class), '#[BidirektField]', $attribute->location);
         if (is_array($arguments)) {
             $this->addErrors($arguments);
 
@@ -455,17 +387,17 @@ final class ClassesToSchemas
 
             return null;
         }
-        $location = $owner->file->locationOf($member);
-        $node = $this->types->fieldToSchemaNode(self::memberToSource($member, $memberName, $declaration), $arguments, $owner, $scope, $location);
+        $node = $this->types->fieldToSchemaNode($member->source, $arguments, $scope, $member->location);
         if (is_array($node)) {
             $this->addErrors($node);
 
             return null;
         }
-        return $options->nodeToProperty($memberName, $node, $location);
+
+        return $options->nodeToProperty($member->name, $node, $member->location);
     }
 
-    private function tagToProperty(PropertyItem|Param $member, string $memberName, CommentTag $tag, Stmt\Property|ClassMethod $declaration, ClassDeclaration $owner, ClassScope $scope): ?Property
+    private function tagToProperty(MemberSummary $member, CommentTag $tag, ClassScope $scope): ?Property
     {
         $options = TagArgumentsToOptions::argumentsToOptions($tag, $tag->arguments, TagArgumentsToOptions::FIELD_KEYS);
         if ($options instanceof Diagnostic) {
@@ -473,23 +405,21 @@ final class ClassesToSchemas
 
             return null;
         }
-        $location = $owner->file->locationOf($member);
-        $source = self::memberToSource($member, $memberName, $declaration);
-        $node = $this->types->declaredToSchemaNode($source, $options->declared, $owner, $scope, $location, AnnotationForm::tag());
+        $node = $this->types->declaredToSchemaNode($member->source, $options->declared, $scope, $member->location, AnnotationForm::tag());
         if (is_array($node)) {
             $this->addErrors($node);
 
             return null;
         }
-        return $options->nodeToProperty($memberName, $node, $location);
+
+        return $options->nodeToProperty($member->name, $node, $member->location);
     }
 
-    private function fileToFieldWarnings(ParsedFile $file): void
+    private function fileToFieldWarnings(FileSummary $file): void
     {
-        $members = (new NodeFinder())->find($file->statements, static fn(Node $node): bool => $node instanceof Stmt\Property || $node instanceof Param);
-        foreach ($members as $member) {
-            $attributes = self::attributesNamed($member, $file, 'BidirektField');
-            $tag = $this->tags->fieldTag($file, $member);
+        foreach ($file->fieldSites as $site) {
+            $attributes = self::fieldAttributes($site->attributes);
+            $tag = $file->tags->fieldTag($site->key);
             if ($attributes === [] && $tag === null) {
                 continue;
             }
@@ -503,7 +433,7 @@ final class ClassesToSchemas
                 $location = $tag->location;
                 $fix = $form->addSchema;
             }
-            if ($member instanceof Param && !$member->isPromoted()) {
+            if ($site->notPromotedParameter) {
                 $this->addWarning(new Diagnostic(
                     sprintf(
                         '%s is %s a parameter that is not promoted, so it is not read: put it %s a property or a promoted constructor parameter',
@@ -516,18 +446,18 @@ final class ClassesToSchemas
 
                 continue;
             }
-            $owner = NodeToEnclosingClass::nodeToEnclosingClass($member);
-            if ($owner === null || isset($this->readClasses[$file->nodeToKey($owner)])) {
+            $owner = $site->owner;
+            if ($owner === null || isset($this->readClasses[spl_object_id($owner)])) {
                 continue;
             }
-            if ($owner instanceof Trait_) {
+            if ($owner->kind === 'trait') {
                 $fix = sprintf('use the trait in a class with %s', $form->schemaAnnotation);
             }
             $this->addWarning(new Diagnostic(
                 sprintf(
                     '%s is in %s, which is neither a schema nor the parent of one, so it is not read: %s',
                     $form->fieldAnnotation,
-                    SchemaClasses::nodeToDescription($owner),
+                    $owner->description,
                     $fix,
                 ),
                 $location,
@@ -536,27 +466,15 @@ final class ClassesToSchemas
     }
 
     /**
-     * @return list<SdkAttribute>
+     * @param list<SdkAttribute> $attributes
+     * @return list<SdkAttribute> the #[BidirektField] among them
      */
-    private static function attributesNamed(Node $element, ParsedFile $file, string $name): array
+    private static function fieldAttributes(array $attributes): array
     {
         return array_values(array_filter(
-            SdkAttributes::elementToSdkAttributes($element, $file),
-            static fn(SdkAttribute $attribute): bool => $attribute->name === $name,
+            $attributes,
+            static fn(SdkAttribute $attribute): bool => $attribute->name === 'BidirektField',
         ));
-    }
-
-    private static function memberToSource(PropertyItem|Param $member, string $memberName, Stmt\Property|ClassMethod $declaration): FieldSource
-    {
-        $names = NameContextVisitor::nodeToNameContext($member);
-        if ($member instanceof Param && $declaration instanceof ClassMethod) {
-            return new FieldSource($memberName, $member->type, $member->getDocComment()?->getText(), $declaration->getDocComment()?->getText(), $names, 'in the docblock above the parameter and its attributes');
-        }
-        if ($declaration instanceof Stmt\Property) {
-            return new FieldSource($memberName, $declaration->type, $declaration->getDocComment()?->getText(), null, $names, self::PROPERTY_DOCBLOCK);
-        }
-
-        return new FieldSource($memberName, null, null, null, $names, self::PROPERTY_DOCBLOCK);
     }
 
     /**

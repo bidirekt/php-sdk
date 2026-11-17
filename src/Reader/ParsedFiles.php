@@ -5,40 +5,24 @@ declare(strict_types=1);
 namespace Bidirekt\PhpSdk\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
-use LogicException;
 
 /**
- * The files read so far. A parsed file takes about 500 bytes per token, so the files are kept parsed up to a
- * third of the memory limit PHP started with and any other is parsed again each time it is read: a project file
- * from the code read the first time, so it reads the same, a vendor file from the disk. The limit the bin raises
- * is room to parse one big file, not to keep more.
+ * The files read so far, each kept as its summary, so a file is parsed once: a project file when it is read,
+ * any other when a lookup first reaches it. A summary is far smaller than the file's tree, which is dropped.
  */
 final class ParsedFiles
 {
-    private const BYTES_PER_KEPT_TOKEN = 600;
-
     private PhpFileToParsed $parser;
-
-    private int $keptTokensLimit;
 
     /** @var array<string, string> real path => the path the file is read by, the first one it was asked by */
     private array $paths = [];
 
-    /** @var array<string, string> path => code of a project file the SDK reads whole */
-    private array $projectCode = [];
-
-    /** @var array<string, ParsedFile> real path => the file */
-    private array $kept = [];
-
-    private int $keptTokens = 0;
-
-    /** @var array<string, Diagnostic> real path => why the file cannot be read */
-    private array $unreadable = [];
+    /** @var array<string, FileSummary|Diagnostic> real path => the file's summary, or why it cannot be read */
+    private array $summaries = [];
 
     public function __construct()
     {
         $this->parser = new PhpFileToParsed();
-        $this->keptTokensLimit = intdiv(self::memoryLimitToBytes(self::startingMemoryLimit()), 3 * self::BYTES_PER_KEPT_TOKEN);
     }
 
     /**
@@ -50,67 +34,40 @@ final class ParsedFiles
         if ($code instanceof Diagnostic) {
             return $code;
         }
-        $read = $this->parser->projectCodeToRead($path, $code);
-        if ($read instanceof ParsedFile) {
-            $this->paths[self::pathToKey($path)] ??= $path;
-            $this->projectCode[$path] = $code;
-            $this->keep(self::pathToKey($path), $read);
-        }
 
-        return $read;
+        return $this->parser->projectCodeToRead($path, $code);
     }
 
     /**
-     * A project file `projectFileToRead()` read whole.
+     * Keeps the summary of a project file `projectFileToRead()` parsed.
+     *
+     * @param SchemaTags $tags the file's own schema and field tags
      */
-    public function projectFile(string $path): ParsedFile
+    public function addProjectFile(ParsedFile $file, SchemaTags $tags): FileSummary
     {
-        $parsed = $this->pathToParsed($path);
-        if ($parsed instanceof Diagnostic) {
-            throw new LogicException(sprintf('the project file "%s" parsed before cannot be parsed again', $path));
-        }
+        $key = self::pathToKey($file->path);
+        $this->paths[$key] ??= $file->path;
 
-        return $parsed;
+        return $this->summaries[$key] = ParsedFileToSummary::parsedFileToSummary($file, $tags);
     }
 
-    public function pathToParsed(string $path): ParsedFile|Diagnostic
+    public function pathToSummary(string $path): FileSummary|Diagnostic
     {
         $key = self::pathToKey($path);
-        if (isset($this->kept[$key])) {
-            return $this->kept[$key];
-        }
-        if (isset($this->unreadable[$key])) {
-            return $this->unreadable[$key];
+        if (isset($this->summaries[$key])) {
+            return $this->summaries[$key];
         }
         $path = $this->paths[$key] ??= $path;
-        $code = $this->projectCode[$path] ?? PhpFileToParsed::fileToCode($path);
+        $code = PhpFileToParsed::fileToCode($path);
         if ($code instanceof Diagnostic) {
-            $this->unreadable[$key] = $code;
-
-            return $code;
+            return $this->summaries[$key] = $code;
         }
         $parsed = $this->parser->codeToParsed($path, $code);
         if ($parsed instanceof Diagnostic) {
-            $this->unreadable[$key] = $parsed;
-
-            return $parsed;
+            return $this->summaries[$key] = $parsed;
         }
-        $this->keep($key, $parsed);
 
-        return $parsed;
-    }
-
-    /**
-     * The steps read the files in the same order, so the first ones are kept rather than the latest.
-     */
-    private function keep(string $key, ParsedFile $parsed): void
-    {
-        $tokens = count($parsed->tokens);
-        if ($this->kept !== [] && $this->keptTokens + $tokens > $this->keptTokensLimit) {
-            return;
-        }
-        $this->kept[$key] = $parsed;
-        $this->keptTokens += $tokens;
+        return $this->summaries[$key] = ParsedFileToSummary::parsedFileToSummary($parsed, SchemaTags::parsedFileToTags($parsed));
     }
 
     /**
@@ -124,16 +81,6 @@ final class ParsedFiles
         $units = ['' => 1, 'k' => 1024, 'm' => 1024 ** 2, 'g' => 1024 ** 3];
 
         return (int) min(PHP_INT_MAX, (int) $match[1] * $units[strtolower($match[2])]);
-    }
-
-    private static function startingMemoryLimit(): string
-    {
-        $setting = ini_get_all(null, true)['memory_limit'] ?? null;
-        if (is_array($setting) && is_string($setting['global_value'])) {
-            return $setting['global_value'];
-        }
-
-        return (string) ini_get('memory_limit');
     }
 
     private static function pathToKey(string $path): string

@@ -30,14 +30,14 @@ final class FieldToSchemaNode
      * @param SourceLocation $location the field's, where every error about its type points
      * @return SchemaNode|list<Diagnostic>
      */
-    public function fieldToSchemaNode(FieldSource $field, AttributeArguments $arguments, ClassDeclaration $owner, ClassScope $scope, SourceLocation $location): SchemaNode|array
+    public function fieldToSchemaNode(FieldSource $field, AttributeArguments $arguments, ClassScope $scope, SourceLocation $location): SchemaNode|array
     {
         $declared = $this->declared->argumentsToSchemaNode($arguments, $location);
         if (is_array($declared)) {
             return $declared;
         }
 
-        return $this->declaredToSchemaNode($field, $declared, $owner, $scope, $location, AnnotationForm::attribute());
+        return $this->declaredToSchemaNode($field, $declared, $scope, $location, AnnotationForm::attribute());
     }
 
     /**
@@ -45,15 +45,14 @@ final class FieldToSchemaNode
      * @param SourceLocation $location the field's, where every error about its type points
      * @return SchemaNode|list<Diagnostic>
      */
-    public function declaredToSchemaNode(FieldSource $field, ?SchemaNode $declared, ClassDeclaration $owner, ClassScope $scope, SourceLocation $location, AnnotationForm $form): SchemaNode|array
+    public function declaredToSchemaNode(FieldSource $field, ?SchemaNode $declared, ClassScope $scope, SourceLocation $location, AnnotationForm $form): SchemaNode|array
     {
         $doc = $this->fieldToDocType($field, $location);
         $native = null;
         if ($field->nativeType !== null) {
-            $text = $owner->file->textOf($field->nativeType);
-            $native = $this->docs->textToWrittenType($text, $field->names);
+            $native = $this->docs->textToWrittenType($field->nativeType, $field->names);
             if ($native === null) {
-                return [new Diagnostic(sprintf('cannot translate "%s" to a contract type: declare it with %s', $text, $form->declareType), $location)];
+                return [new Diagnostic(sprintf('cannot translate "%s" to a contract type: declare it with %s', $field->nativeType, $form->declareType), $location)];
             }
         }
         if ($declared !== null && !$declared instanceof UnionNode) {

@@ -12,7 +12,6 @@ use PhpParser\Node\Arg;
 use PhpParser\Node\FunctionLike;
 use PhpParser\Node\Param;
 use PhpParser\Node\Stmt;
-use PhpParser\NodeFinder;
 
 /**
  * Reads the `@bidirekt` tags of every `/** *\/` docblock of a file bound to a statement, a declaration, a
@@ -31,14 +30,17 @@ final class FileToTaggedComments
 
     private const MENTION_PATTERN = '/(?<![^\s*])(@bidirekt[^\s*]*)[ \t]*([^\s*]*)/i';
 
-    /** An `@` after a whitespace and before a word starts another tag, unless it is inside backticks on its line. */
-    private const INLINE_TAG_PATTERN = '/`[^`\n]*(?:`|$)(*SKIP)(*FAIL)|(?<=\s)@(?!\s)/m';
+    /**
+     * An `@` after a whitespace and before a word starts another tag, unless it is inside backticks on its line
+     * or inside double quotes closed like `description="…"`'s, which may span lines.
+     */
+    private const INLINE_TAG_PATTERN = '/`[^`\n]*(?:`|$)(*SKIP)(*FAIL)|"[^"]*"(*SKIP)(*FAIL)|(?<=\s)@(?!\s)/m';
 
     public static function fileToTaggedComments(ParsedFile $file): TaggedComments
     {
         $read = new TaggedComments();
         $bound = [];
-        foreach ((new NodeFinder())->find($file->statements, static fn(Node $node): bool => $node->getComments() !== []) as $node) {
+        foreach ($file->nodes->commented as $node) {
             $element = self::nodeToElement($node);
             if ($element === null) {
                 continue;

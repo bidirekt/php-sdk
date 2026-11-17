@@ -18,7 +18,6 @@ use Bidirekt\PhpSdk\Model\Response;
 use Bidirekt\PhpSdk\Model\SchemaNames;
 use Bidirekt\PhpSdk\Model\SourceLocation;
 use PhpParser\Node\FunctionLike;
-use PhpParser\NodeFinder;
 
 /**
  * Reads `#[BidirektProvider]` and `#[BidirektConsumer]` on methods, functions, closures and arrow
@@ -34,19 +33,18 @@ final class HandlersToResources
     ) {}
 
     /**
-     * @param list<string> $paths the project files `$files` reads whole
+     * @param list<FileSummary> $files the project files that mention the SDK
      * @return ReadResult the resources, the lists their bodies declare and the schemas declared on handlers
      */
-    public function filesToResources(array $paths, ParsedFiles $files): ReadResult
+    public function filesToResources(array $files): ReadResult
     {
         $contract = new Contract();
         $errors = [];
-        foreach ($paths as $path) {
-            $file = $files->projectFile($path);
-            foreach (self::fileToHandlers($file) as $handler) {
-                foreach (SdkAttributes::elementToSdkAttributes($handler, $file) as $attribute) {
+        foreach ($files as $file) {
+            foreach ($file->handlers as $attributes) {
+                foreach ($attributes as $attribute) {
                     if ($attribute->name === 'BidirektSchema') {
-                        [$schema, $schemaErrors] = $this->attributeToSchema($attribute, $file);
+                        [$schema, $schemaErrors] = $this->attributeToSchema($attribute);
                         array_push($errors, ...$schemaErrors);
                         if ($schema !== null) {
                             $contract->schemas[] = $schema;
@@ -57,7 +55,7 @@ final class HandlersToResources
                     if ($attribute->name !== 'BidirektProvider' && $attribute->name !== 'BidirektConsumer') {
                         continue;
                     }
-                    $read = $this->attributeToDeclarations($attribute, $file);
+                    $read = $this->attributeToDeclarations($attribute);
                     if (is_array($read)) {
                         array_push($errors, ...$read);
 
@@ -80,7 +78,7 @@ final class HandlersToResources
      */
     public static function fileToHandlers(ParsedFile $file): array
     {
-        return array_values((new NodeFinder())->findInstanceOf($file->statements, FunctionLike::class));
+        return $file->nodes->functionLikes;
     }
 
     public static function methodToUppercaseError(string $method, SourceLocation $location): ?Diagnostic
@@ -110,9 +108,9 @@ final class HandlersToResources
      *
      * @return array{NamedSchema|null, list<Diagnostic>}
      */
-    private function attributeToSchema(SdkAttribute $attribute, ParsedFile $file): array
+    private function attributeToSchema(SdkAttribute $attribute): array
     {
-        $arguments = $this->evaluator->argumentsToNamedAndErrors($attribute->attribute->args, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location, $file);
+        $arguments = $this->evaluator->argumentsToNamedAndErrors($attribute->arguments, SdkAttributes::classToParameters(BidirektSchema::class), '#[BidirektSchema]', $attribute->location);
         $errors = $arguments->errors;
         if ($errors !== [] && !isset($arguments->values['name'])) {
             return [null, $errors];
@@ -141,14 +139,14 @@ final class HandlersToResources
      *
      * @return Contract|list<Diagnostic>
      */
-    private function attributeToDeclarations(SdkAttribute $attribute, ParsedFile $file): Contract|array
+    private function attributeToDeclarations(SdkAttribute $attribute): Contract|array
     {
         $what = sprintf('#[%s]', $attribute->name);
         $parameters = SdkAttributes::classToParameters(BidirektProvider::class);
         if ($attribute->name === 'BidirektConsumer') {
             $parameters = SdkAttributes::classToParameters(BidirektConsumer::class);
         }
-        $arguments = $this->evaluator->argumentsToNamed($attribute->attribute->args, $parameters, $what, $attribute->location, $file);
+        $arguments = $this->evaluator->argumentsToNamed($attribute->arguments, $parameters, $what, $attribute->location);
         if (is_array($arguments)) {
             return $arguments;
         }

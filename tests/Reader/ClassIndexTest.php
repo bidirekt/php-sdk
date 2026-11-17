@@ -12,6 +12,7 @@ use Bidirekt\PhpSdk\Reader\ParsedFile;
 use Bidirekt\PhpSdk\Reader\ParsedFiles;
 use Bidirekt\PhpSdk\Reader\Project;
 use Bidirekt\PhpSdk\Reader\ProjectToFiles;
+use Bidirekt\PhpSdk\Reader\SchemaTags;
 use PHPUnit\Framework\TestCase;
 
 final class ClassIndexTest extends TestCase
@@ -151,7 +152,7 @@ final class ClassIndexTest extends TestCase
             $read = $files->projectFileToRead($path);
             self::assertNotInstanceOf(Diagnostic::class, $read);
             if ($read instanceof ParsedFile) {
-                $index->addParsedFile($read);
+                $index->addFileSummary($files->addProjectFile($read, new SchemaTags()));
 
                 continue;
             }

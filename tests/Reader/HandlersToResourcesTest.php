@@ -8,7 +8,7 @@ use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
 use Bidirekt\PhpSdk\Reader\HandlersToResources;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
-use Bidirekt\PhpSdk\Reader\ParsedFiles;
+use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
 use PhpParser\Node\Stmt\ClassMethod;
@@ -52,7 +52,7 @@ final class HandlersToResourcesTest extends TestCase
                 return fn () => null;
             });
             PHP);
-        $parsed = (new ParsedFiles())->pathToParsed($this->file);
+        $parsed = (new PhpFileToParsed())->codeToParsed($this->file, (string) file_get_contents($this->file));
         self::assertInstanceOf(ParsedFile::class, $parsed);
 
         $handlers = HandlersToResources::fileToHandlers($parsed);

@@ -12,9 +12,13 @@ use Bidirekt\PhpSdk\Reader\ClassReference;
 use Bidirekt\PhpSdk\Reader\ConstantArray;
 use Bidirekt\PhpSdk\Reader\ConstantExpressionToValue;
 use Bidirekt\PhpSdk\Reader\ConstantValue;
+use Bidirekt\PhpSdk\Reader\ExpressionToSummary;
 use Bidirekt\PhpSdk\Reader\FieldConstruction;
+use Bidirekt\PhpSdk\Reader\FileSummary;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
 use Bidirekt\PhpSdk\Reader\ParsedFiles;
+use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
+use Bidirekt\PhpSdk\Reader\SchemaTags;
 use PhpParser\Node\Attribute;
 use PhpParser\NodeFinder;
 use PHPUnit\Framework\TestCase;
@@ -174,25 +178,25 @@ final class ConstantExpressionToValueTest extends TestCase
     {
         $files = new ParsedFiles();
         $classes = new ClassIndex($files, null);
-        $classes->addParsedFile($file);
+        $classes->addFileSummary($files->addProjectFile($file, new SchemaTags()));
         foreach (['Codes.php', 'Loop.php'] as $other) {
             if (is_file($this->root . '/' . $other)) {
-                $parsed = $files->pathToParsed($this->root . '/' . $other);
-                self::assertInstanceOf(ParsedFile::class, $parsed);
-                $classes->addParsedFile($parsed);
+                $summary = $files->pathToSummary($this->root . '/' . $other);
+                self::assertInstanceOf(FileSummary::class, $summary);
+                $classes->addFileSummary($summary);
             }
         }
         $attribute = (new NodeFinder())->findFirstInstanceOf($file->statements, Attribute::class);
         self::assertInstanceOf(Attribute::class, $attribute);
 
         return (new ConstantExpressionToValue($classes))
-            ->argumentsToNamed($attribute->args, self::PARAMETERS, '#[Handler]', $file->locationOf($attribute), $file);
+            ->argumentsToNamed(ExpressionToSummary::argumentsToSummaries($attribute->args, $file), self::PARAMETERS, '#[Handler]', $file->locationOf($attribute));
     }
 
     private function parse(string $name, string $code): ParsedFile
     {
         $this->write($name, $code);
-        $parsed = (new ParsedFiles())->pathToParsed($this->root . '/' . $name);
+        $parsed = (new PhpFileToParsed())->codeToParsed($this->root . '/' . $name, $code);
         self::assertInstanceOf(ParsedFile::class, $parsed);
 
         return $parsed;

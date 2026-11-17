@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Bidirekt\PhpSdk\Reader;
 
 use Bidirekt\PhpSdk\Model\SourceLocation;
-use LogicException;
 use PhpParser\Node;
 use PhpParser\Node\Expr\ArrowFunction;
 use PhpParser\Node\Expr\Closure;
@@ -15,13 +14,12 @@ use PhpParser\Node\Stmt\ClassLike;
 use PhpParser\Node\Stmt\ClassMethod;
 use PhpParser\Node\Stmt\EnumCase;
 use PhpParser\Node\Stmt\Function_;
-use PhpParser\NodeFinder;
 use PhpParser\Token;
 
 final class ParsedFile
 {
-    /** @var array<string, ClassDeclaration>|null lowercase name => its first declaration in the file */
-    private ?array $declarations = null;
+    /** @var array<int, SourceLocation> line => its location */
+    private array $locations = [];
 
     /**
      * @param list<Node> $statements with names resolved, the original kept in the "originalName" attribute
@@ -31,11 +29,15 @@ final class ParsedFile
         public string $path,
         public array $statements,
         public array $tokens,
+        public FileNodes $nodes,
     ) {}
 
+    /**
+     * One location per line, which every element of the line shares.
+     */
     public function lineToLocation(int $line): SourceLocation
     {
-        return new SourceLocation($this->path, $line);
+        return $this->locations[$line] ??= new SourceLocation($this->path, $line);
     }
 
     /**
@@ -51,60 +53,21 @@ final class ParsedFile
      */
     public function textOf(Node $node): string
     {
-        $text = '';
-        for ($position = $node->getStartTokenPos(); $position <= $node->getEndTokenPos() && isset($this->tokens[$position]); $position++) {
-            $text .= $this->tokens[$position]->text;
+        $start = $node->getStartTokenPos();
+        if ($start < 0) {
+            return '';
         }
+        $tokens = array_slice($this->tokens, $start, $node->getEndTokenPos() - $start + 1);
 
-        return (string) preg_replace('/\s+/', ' ', $text);
+        return (string) preg_replace('/\s+/', ' ', implode('', array_column($tokens, 'text')));
     }
 
     /**
-     * @return list<ClassDeclaration> the named class-likes, in the order they are written
-     */
-    public function classDeclarations(): array
-    {
-        $declarations = [];
-        foreach ((new NodeFinder())->findInstanceOf($this->statements, ClassLike::class) as $node) {
-            if ($node->namespacedName !== null) {
-                $declarations[] = new ClassDeclaration($node->namespacedName->toString(), $node, $this);
-            }
-        }
-
-        return $declarations;
-    }
-
-    public function classDeclarationNamed(string $lowercaseName): ?ClassDeclaration
-    {
-        if ($this->declarations === null) {
-            $this->declarations = [];
-            foreach ($this->classDeclarations() as $declaration) {
-                $this->declarations[strtolower($declaration->name)] ??= $declaration;
-            }
-        }
-
-        return $this->declarations[$lowercaseName] ?? null;
-    }
-
-    /**
-     * Names the node by where it is written, so the node a later read of the file builds has the same key.
+     * Names the node by where it is written in its file, for the summary and the tags of that file only.
      */
     public function nodeToKey(Node $node): string
     {
-        return sprintf('%s:%d:%d:%s', $this->path, $node->getStartFilePos(), $node->getEndFilePos(), $node::class);
-    }
-
-    /**
-     * The class-like a read of the same code gave this key.
-     */
-    public function keyToClassLike(string $key): ClassLike
-    {
-        $found = (new NodeFinder())->findFirst($this->statements, fn(Node $node): bool => $node instanceof ClassLike && $this->nodeToKey($node) === $key);
-        if (!$found instanceof ClassLike) {
-            throw new LogicException(sprintf('no class-like in "%s" has the key "%s"', $this->path, $key));
-        }
-
-        return $found;
+        return sprintf('%d:%d:%s', $node->getStartFilePos(), $node->getEndFilePos(), $node->getType());
     }
 
     private function lineOf(Node $node): int

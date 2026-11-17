@@ -62,7 +62,7 @@ final class CommentsToSchemaTags
 
             return;
         }
-        if ($read->schemaTag($comment->file, $element) !== null) {
+        if ($read->schemaTag($comment->file->nodeToKey($element)) !== null) {
             $read->errors[] = new Diagnostic(
                 sprintf('"@bidirekt schema" is declared more than once on %s: keep one', SchemaClasses::nodeToDescription($element)),
                 $tag->location,
@@ -84,7 +84,7 @@ final class CommentsToSchemaTags
 
             return;
         }
-        if ($read->fieldTag($comment->file, $element) !== null) {
+        if ($read->fieldTag($comment->file->nodeToKey($element)) !== null) {
             $read->errors[] = new Diagnostic(
                 sprintf('"@bidirekt field" is declared more than once on property "%s": keep one', SchemaNaming::memberToName($element)),
                 $tag->location,

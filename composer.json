@@ -35,6 +35,6 @@
         "check": "php-cs-fixer fix --dry-run --diff",
         "format": "php-cs-fixer fix",
         "lint": "phpstan analyse",
-        "test": "phpunit"
+        "test": "@php -d xdebug.mode=off -d pcov.enabled=0 vendor/bin/phpunit"
     }
 }
