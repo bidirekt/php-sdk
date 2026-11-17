@@ -27,14 +27,11 @@ use PhpParser\NodeFinder;
  */
 final class HandlersToResources
 {
-    private FieldsToProperties $declaredFields;
-
     public function __construct(
         private ConstantExpressionToValue $evaluator,
         private TypeToSchemaNode $types,
-    ) {
-        $this->declaredFields = new FieldsToProperties(new DeclaredTypeToSchemaNode($types));
-    }
+        private FieldsToProperties $declaredFields,
+    ) {}
 
     /**
      * @param list<string> $paths the project files `$files` reads whole

@@ -7,12 +7,12 @@ namespace Bidirekt\PhpSdk\Reader;
 use Bidirekt\PhpSdk\Model\Diagnostic;
 
 /**
- * Every docblock of the project with `@bidirekt` tags, and the errors and warnings of reading the tags themselves.
+ * Every docblock of a file with `@bidirekt` tags, and the errors and warnings of reading the tags themselves.
  */
 final class TaggedComments
 {
     /**
-     * @param list<TaggedComment> $comments in the order they are written, file by file
+     * @param list<TaggedComment> $comments in the order they are written
      * @param list<Diagnostic> $errors
      * @param list<Diagnostic> $warnings
      */

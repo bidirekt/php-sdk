@@ -50,7 +50,7 @@ final class SchemaTags
             return;
         }
         $this->readFiles[$file->path] = true;
-        $tagged = FilesToTaggedComments::filesToTaggedComments([$file]);
+        $tagged = FileToTaggedComments::fileToTaggedComments($file);
         $read = CommentsToSchemaTags::commentsToSchemaTags($tagged->comments);
         $this->schemas += $read->schemas;
         $this->fields += $read->fields;

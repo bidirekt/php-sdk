@@ -9,8 +9,9 @@ use LogicException;
 
 /**
  * The files read so far. A parsed file takes about 500 bytes per token, so the files are kept parsed up to a
- * third of the memory limit and any other is parsed again each time it is read: a project file from the code
- * read the first time, so it reads the same, a vendor file from the disk.
+ * third of the memory limit PHP started with and any other is parsed again each time it is read: a project file
+ * from the code read the first time, so it reads the same, a vendor file from the disk. The limit the bin raises
+ * is room to parse one big file, not to keep more.
  */
 final class ParsedFiles
 {
@@ -37,7 +38,7 @@ final class ParsedFiles
     public function __construct()
     {
         $this->parser = new PhpFileToParsed();
-        $this->keptTokensLimit = intdiv(self::memoryLimitToBytes((string) ini_get('memory_limit')), 3 * self::BYTES_PER_KEPT_TOKEN);
+        $this->keptTokensLimit = intdiv(self::memoryLimitToBytes(self::startingMemoryLimit()), 3 * self::BYTES_PER_KEPT_TOKEN);
     }
 
     /**
@@ -115,7 +116,7 @@ final class ParsedFiles
     /**
      * `-1` is no limit; `128M`, `1G`, `512K` or bytes otherwise.
      */
-    private static function memoryLimitToBytes(string $limit): int
+    public static function memoryLimitToBytes(string $limit): int
     {
         if (preg_match('/^\s*(\d+)\s*([kmg]?)\s*$/i', $limit, $match) !== 1) {
             return PHP_INT_MAX;
@@ -123,6 +124,16 @@ final class ParsedFiles
         $units = ['' => 1, 'k' => 1024, 'm' => 1024 ** 2, 'g' => 1024 ** 3];
 
         return (int) min(PHP_INT_MAX, (int) $match[1] * $units[strtolower($match[2])]);
+    }
+
+    private static function startingMemoryLimit(): string
+    {
+        $setting = ini_get_all(null, true)['memory_limit'] ?? null;
+        if (is_array($setting) && is_string($setting['global_value'])) {
+            return $setting['global_value'];
+        }
+
+        return (string) ini_get('memory_limit');
     }
 
     private static function pathToKey(string $path): string

@@ -19,15 +19,11 @@ final class FieldToSchemaNode
 {
     private PhpDocToWrittenType $docs;
 
-    private TypeToSchemaNode $types;
-
-    private DeclaredTypeToSchemaNode $declared;
-
-    public function __construct(ClassIndex $classes, SchemaClasses $schemas)
-    {
+    public function __construct(
+        private TypeToSchemaNode $types,
+        private DeclaredTypeToSchemaNode $declared,
+    ) {
         $this->docs = new PhpDocToWrittenType();
-        $this->types = new TypeToSchemaNode($classes, $schemas);
-        $this->declared = new DeclaredTypeToSchemaNode($this->types);
     }
 
     /**

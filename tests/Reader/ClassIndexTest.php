@@ -76,6 +76,8 @@ final class ClassIndexTest extends TestCase
             new Diagnostic('class "App\\Pet" is declared in more than one file generate reads: keep a single declaration', new SourceLocation($this->root . '/src/Pet.php', 5)),
         ], $lookup->errors);
         self::assertSame($lookup->errors, $classes->lookup('App\\Pet', $usedAt)->errors);
+        self::assertSame($lookup->errors, $classes->duplicateErrors('\\app\\pet'));
+        self::assertSame([], $classes->duplicateErrors('App\\Owner'));
     }
 
     public function testReadsAVendorClassOnDemandThroughTheAutoloadMaps(): void

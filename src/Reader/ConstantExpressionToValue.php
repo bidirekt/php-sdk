@@ -326,6 +326,10 @@ final class ConstantExpressionToValue
             return [$class];
         }
         $shown = sprintf('%s::%s', SchemaNaming::classToShortName($class), $fetch->name->toString());
+        $key = strtolower($class) . '::' . $fetch->name->toString() . '->value';
+        if (isset($resolving[$key])) {
+            return [new Diagnostic(sprintf('enum case "%s" refers to itself: give it a value', $shown), $location)];
+        }
         $declaration = $this->classToDeclaration($class, $location, sprintf('enum case "%s"', $shown));
         if (!$declaration instanceof ClassDeclaration) {
             return $declaration;
@@ -343,7 +347,7 @@ final class ConstantExpressionToValue
                 $location,
             )];
         }
-        $value = $this->withScope(null)->expressionToValueResolving($case->expr, $declaration->file, $resolving);
+        $value = $this->withScope(null)->expressionToValueResolving($case->expr, $declaration->file, $resolving + [$key => true]);
         if (is_array($value)) {
             return $value;
         }

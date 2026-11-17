@@ -136,6 +136,26 @@ final class ConstantExpressionToValueTest extends TestCase
     }
 
     /**
+     * @return iterable<string, array{string, int}>
+     */
+    public static function enumCaseLoops(): iterable
+    {
+        yield 'case value refers to itself' => ["case Cat = self::Cat->value;\n    case Dog = 'dog';", 6];
+        yield 'case values refer to each other' => ["case Cat = self::Dog->value;\n    case Dog = self::Cat->value;", 7];
+    }
+
+    /**
+     * @dataProvider enumCaseLoops
+     */
+    public function testRejectsAnEnumCaseValueThatRefersToItselfWhereTheLoopCloses(string $cases, int $line): void
+    {
+        $this->write('Loop.php', "<?php\nnamespace App;\n\nenum Kind: string\n{\n    " . $cases . "\n}\n");
+        $file = $this->parse('subject.php', "<?php\nnamespace App;\n#[Handler(method: Kind::Cat->value)]\nfunction handler() {}\n");
+
+        self::assertEquals([new Diagnostic('enum case "Kind::Cat" refers to itself: give it a value', new SourceLocation($this->root . '/Loop.php', $line))], $this->evaluate($file));
+    }
+
+    /**
      * @param string $around the code around the attribute, `%s` where it goes
      */
     private function arguments(string $attribute, string $around = "%s\nfunction handler() {}\n"): AttributeArguments

@@ -14,6 +14,8 @@ The SDK needs PHP 8.0 or later and Composer 2.2 or later. Install it as a dev de
 composer require --dev bidirekt/php-sdk
 ```
 
+The SDK needs `nikic/php-parser` 5.6.2 or later to read PHP 8.4 and 8.5 code. If Composer says your lock file fixes an older version (a Laravel project locks it through `psy/psysh`), run `composer require --dev bidirekt/php-sdk -W` so Composer may update it.
+
 It is one package: the four attributes your code uses and the `generate` command. An attribute runs nothing: PHP loads its class only when code calls `newInstance()` on it, and `generate` reads the attributes from the source instead. So a production install with `composer install --no-dev`, which leaves the package out, still runs your app.
 
 `generate` reads your code and never runs it, so it reads code of any PHP version. Two forms need a newer PHP to run your app, not to run `generate`:

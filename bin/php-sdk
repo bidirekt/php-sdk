@@ -4,6 +4,7 @@
 declare(strict_types=1);
 
 use Bidirekt\PhpSdk\Command\GenerateCommand;
+use Bidirekt\PhpSdk\Reader\ParsedFiles;
 use Bidirekt\PhpSdk\Reader\VendorToClassLoader;
 use Composer\Autoload\ClassLoader;
 
@@ -23,6 +24,11 @@ if (is_string($loader)) {
     exit(1);
 }
 $loader->register();
+// Parsing a file takes about 40 times its size, so one generated file (a container, a baseline) of a few MB
+// outgrows PHP's default 128M; Composer raises the limit the same way.
+if (ParsedFiles::memoryLimitToBytes((string) ini_get('memory_limit')) < 1536 * 1024 ** 2) {
+    ini_set('memory_limit', '1536M');
+}
 if (extension_loaded('xdebug')) {
     // PHP-Parser reads a nested expression by recursion, which Xdebug stops at 512 calls by default.
     ini_set('xdebug.max_nesting_level', '-1');

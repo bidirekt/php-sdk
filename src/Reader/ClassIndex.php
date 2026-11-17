@@ -63,9 +63,7 @@ final class ClassIndex
             return $this->fileLookup((string) $declared[0]->location->file, $key);
         }
         if (count($declared) > 1) {
-            $this->duplicateErrors[$key] ??= self::duplicatesToErrors($declared);
-
-            return new ClassLookup(null, $this->duplicateErrors[$key]);
+            return new ClassLookup(null, $this->duplicateErrors($class));
         }
         if ($this->vendorDirectory === null || self::isBuiltIn($class, true)) {
             return new ClassLookup(null);
@@ -94,6 +92,22 @@ final class ClassIndex
         }
 
         return $lookup;
+    }
+
+    /**
+     * The errors of a project class declared in more than one file, none when it is declared once.
+     *
+     * @return list<Diagnostic>
+     */
+    public function duplicateErrors(string $class): array
+    {
+        $key = strtolower(ltrim($class, '\\'));
+        $declared = $this->project[$key] ?? [];
+        if (count($declared) < 2) {
+            return [];
+        }
+
+        return $this->duplicateErrors[$key] ??= self::duplicatesToErrors($declared);
     }
 
     /**

@@ -1,0 +1,1 @@
+pet.php:8 enum case "PetSize::Short" refers to itself: give it a value

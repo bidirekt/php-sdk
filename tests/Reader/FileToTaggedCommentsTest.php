@@ -6,7 +6,7 @@ namespace Bidirekt\PhpSdk\Tests\Reader;
 
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Reader\CommentTag;
-use Bidirekt\PhpSdk\Reader\FilesToTaggedComments;
+use Bidirekt\PhpSdk\Reader\FileToTaggedComments;
 use Bidirekt\PhpSdk\Reader\ParsedFile;
 use Bidirekt\PhpSdk\Reader\ParsedFiles;
 use Bidirekt\PhpSdk\Reader\TaggedComments;
@@ -15,7 +15,7 @@ use PhpParser\Node\Stmt\Expression;
 use PhpParser\Node\Stmt\Function_;
 use PHPUnit\Framework\TestCase;
 
-final class FilesToTaggedCommentsTest extends TestCase
+final class FileToTaggedCommentsTest extends TestCase
 {
     private string $path;
 
@@ -109,7 +109,7 @@ final class FilesToTaggedCommentsTest extends TestCase
         $file = (new ParsedFiles())->pathToParsed($this->path);
         self::assertInstanceOf(ParsedFile::class, $file);
 
-        return FilesToTaggedComments::filesToTaggedComments([$file]);
+        return FileToTaggedComments::fileToTaggedComments($file);
     }
 
     /**

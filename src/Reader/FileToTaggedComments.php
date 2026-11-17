@@ -15,12 +15,13 @@ use PhpParser\Node\Stmt;
 use PhpParser\NodeFinder;
 
 /**
- * Reads the `@bidirekt` tags of every `/** *\/` docblock bound to a statement, a declaration, a parameter
- * or a function, the element below it, its attributes included. Only a tag at the start of a docblock line
- * counts, outside ``` fences and `@example` blocks, and a tag's arguments run until the next tag, a fence
- * or the end of the docblock. A docblock with tags bound to no element is warned about.
+ * Reads the `@bidirekt` tags of every `/** *\/` docblock of a file bound to a statement, a declaration, a
+ * parameter or a function, the element below it, its attributes included. Only a tag at the start of a
+ * docblock line counts, outside ``` fences and `@example` blocks, and a tag's arguments run until the next
+ * tag, even one in the middle of the line, a fence or the end of the docblock. A docblock with tags bound to
+ * no element is warned about.
  */
-final class FilesToTaggedComments
+final class FileToTaggedComments
 {
     private const ARGUMENT_PATTERN = '/description="[^"]*"(?=\s|$)|union=\{[^}]*\}\S*|\S+/';
 
@@ -30,21 +31,12 @@ final class FilesToTaggedComments
 
     private const MENTION_PATTERN = '/(?<![^\s*])(@bidirekt[^\s*]*)[ \t]*([^\s*]*)/i';
 
-    /**
-     * @param list<ParsedFile> $files
-     */
-    public static function filesToTaggedComments(array $files): TaggedComments
+    /** An `@` after a whitespace and before a word starts another tag, unless it is inside backticks on its line. */
+    private const INLINE_TAG_PATTERN = '/`[^`\n]*(?:`|$)(*SKIP)(*FAIL)|(?<=\s)@(?!\s)/m';
+
+    public static function fileToTaggedComments(ParsedFile $file): TaggedComments
     {
         $read = new TaggedComments();
-        foreach ($files as $file) {
-            self::fileToTaggedComments($file, $read);
-        }
-
-        return $read;
-    }
-
-    private static function fileToTaggedComments(ParsedFile $file, TaggedComments $read): void
-    {
         $bound = [];
         foreach ((new NodeFinder())->find($file->statements, static fn(Node $node): bool => $node->getComments() !== []) as $node) {
             $element = self::nodeToElement($node);
@@ -67,6 +59,8 @@ final class FilesToTaggedComments
                 self::warnUnreadDoc(new DocText($token->text, $token->line), $file, $read);
             }
         }
+
+        return $read;
     }
 
     /**
@@ -170,7 +164,8 @@ final class FilesToTaggedComments
 
     /**
      * Each tag written at the start of a line outside a fence: how it is written (`@bidirekt`, `@param`…),
-     * the text after it up to the next tag, and its position in the docblock.
+     * the text after it up to the next tag, at the start of a line or in the middle of one, and its position
+     * in the docblock.
      *
      * @return list<array{string, string, int}>
      */
@@ -196,7 +191,16 @@ final class FilesToTaggedComments
             }
         }
 
-        return $tags;
+        return array_map(static fn(array $tag): array => [$tag[0], self::textToOwnText($tag[1]), $tag[2]], $tags);
+    }
+
+    private static function textToOwnText(string $text): string
+    {
+        if (preg_match(self::INLINE_TAG_PATTERN, $text, $match, PREG_OFFSET_CAPTURE) !== 1) {
+            return $text;
+        }
+
+        return substr($text, 0, $match[0][1]);
     }
 
     /**

@@ -14,14 +14,15 @@ use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\NodeVisitor\ParentConnectingVisitor;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
+use RangeException;
 
 final class PhpFileToParsed
 {
     private Parser $parser;
 
-    public function __construct()
+    public function __construct(?Parser $parser = null)
     {
-        $this->parser = (new ParserFactory())->createForNewestSupportedVersion();
+        $this->parser = $parser ?? (new ParserFactory())->createForNewestSupportedVersion();
     }
 
     /**
@@ -72,6 +73,12 @@ final class PhpFileToParsed
             return new Diagnostic(
                 'syntax error: ' . self::parserMessageToText($error->getRawMessage()) . ': fix the code so PHP can parse it',
                 new SourceLocation($path, max(1, $error->getStartLine())),
+            );
+        } catch (RangeException) {
+            // PHP-Parser throws it for a token of a PHP version newer than it reads.
+            return new Diagnostic(
+                sprintf('cannot parse the file: nikic/php-parser does not read the syntax of PHP %d.%d yet: update it with composer update nikic/php-parser', PHP_MAJOR_VERSION, PHP_MINOR_VERSION),
+                new SourceLocation($path, 1),
             );
         }
     }

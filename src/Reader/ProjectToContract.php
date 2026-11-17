@@ -18,7 +18,8 @@ final class ProjectToContract
         $classes = new ClassIndex($files, $project->composer?->vendorDirectory);
         $paths = [];
         $syntaxErrors = [];
-        $tagged = new TaggedComments();
+        $tagErrors = [];
+        $tagWarnings = [];
         $schemaTags = new SchemaTags();
         $tagHandlers = new ReadResult(new Contract(), [], []);
         $attributeWarnings = [];
@@ -37,9 +38,9 @@ final class ProjectToContract
             }
             $paths[] = $path;
             $classes->addParsedFile($read);
-            $fileTagged = FilesToTaggedComments::filesToTaggedComments([$read]);
-            array_push($tagged->errors, ...$fileTagged->errors);
-            array_push($tagged->warnings, ...$fileTagged->warnings);
+            $fileTagged = FileToTaggedComments::fileToTaggedComments($read);
+            array_push($tagErrors, ...$fileTagged->errors);
+            array_push($tagWarnings, ...$fileTagged->warnings);
             $schemaTags->addProjectFile($read, CommentsToSchemaTags::commentsToSchemaTags($fileTagged->comments));
             $fileHandlers = TagsToResources::commentsToResources($fileTagged->comments);
             array_push($tagHandlers->contract->provides, ...$fileHandlers->contract->provides);
@@ -53,15 +54,18 @@ final class ProjectToContract
         }
         $evaluator = new ConstantExpressionToValue($classes);
         $schemaClasses = new SchemaClasses($evaluator, $schemaTags);
-        $schemas = ClassesToSchemas::filesToSchemas($paths, $files, $classes, $schemaClasses, $schemaTags);
-        $handlers = (new HandlersToResources($evaluator, new TypeToSchemaNode($classes, $schemaClasses)))->filesToResources($paths, $files);
-        $warnings = [...$projectFiles->warnings, ...$tagged->warnings, ...$schemaTags->warnings, ...$schemas->warnings, ...$attributeWarnings];
+        $types = new TypeToSchemaNode($classes, $schemaClasses);
+        $declaredTypes = new DeclaredTypeToSchemaNode($types);
+        $declaredFields = new FieldsToProperties($declaredTypes);
+        $schemas = ClassesToSchemas::filesToSchemas($paths, $files, $classes, $schemaClasses, $schemaTags, $evaluator, new FieldToSchemaNode($types, $declaredTypes), $declaredFields);
+        $handlers = (new HandlersToResources($evaluator, $types, $declaredFields))->filesToResources($paths, $files);
+        $warnings = [...$projectFiles->warnings, ...$tagWarnings, ...$schemaTags->warnings, ...$schemas->warnings, ...$attributeWarnings];
         $contract = new Contract(
             [...$handlers->contract->provides, ...$tagHandlers->contract->provides],
             [...$handlers->contract->consumes, ...$tagHandlers->contract->consumes],
             [...$schemas->contract->schemas, ...$handlers->contract->schemas, ...$tagHandlers->contract->schemas, ...$schemaClasses->enumSchemas()],
         );
-        $errors = [...$tagged->errors, ...$schemaTags->errors, ...$schemas->errors, ...$handlers->errors, ...$tagHandlers->errors];
+        $errors = [...$tagErrors, ...$schemaTags->errors, ...$schemas->errors, ...$handlers->errors, ...$tagHandlers->errors];
 
         return new ReadResult($contract, $errors, $warnings);
     }

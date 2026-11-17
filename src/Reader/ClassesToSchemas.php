@@ -31,12 +31,6 @@ final class ClassesToSchemas
 {
     private const PROPERTY_DOCBLOCK = 'in the docblock above the property and its attributes';
 
-    private ConstantExpressionToValue $evaluator;
-
-    private FieldToSchemaNode $types;
-
-    private FieldsToProperties $declaredFields;
-
     /** @var list<Diagnostic> */
     private array $errors = [];
 
@@ -56,39 +50,34 @@ final class ClassesToSchemas
         private ClassIndex $classes,
         private SchemaClasses $schemas,
         private SchemaTags $tags,
-    ) {
-        $this->evaluator = new ConstantExpressionToValue($classes);
-        $this->types = new FieldToSchemaNode($classes, $schemas);
-        $this->declaredFields = new FieldsToProperties(new DeclaredTypeToSchemaNode(new TypeToSchemaNode($classes, $schemas)));
-    }
+        private ConstantExpressionToValue $evaluator,
+        private FieldToSchemaNode $types,
+        private FieldsToProperties $declaredFields,
+    ) {}
 
     /**
      * The enum schemas are left in `$schemas`, to be taken once every reference to them is read.
      *
      * @param list<string> $paths the project files `$files` reads whole
      */
-    public static function filesToSchemas(array $paths, ParsedFiles $files, ClassIndex $classes, SchemaClasses $schemas, SchemaTags $tags): ReadResult
-    {
-        $reader = new self($classes, $schemas, $tags);
+    public static function filesToSchemas(
+        array $paths,
+        ParsedFiles $files,
+        ClassIndex $classes,
+        SchemaClasses $schemas,
+        SchemaTags $tags,
+        ConstantExpressionToValue $evaluator,
+        FieldToSchemaNode $fieldTypes,
+        FieldsToProperties $declaredFields,
+    ): ReadResult {
+        $reader = new self($classes, $schemas, $tags, $evaluator, $fieldTypes, $declaredFields);
         $schemaClasses = [];
         foreach ($paths as $path) {
-            $file = $files->projectFile($path);
-            foreach ((new NodeFinder())->findInstanceOf($file->statements, ClassLike::class) as $node) {
-                $schemaClass = $reader->nodeToSchemaClass($node, $file);
-                if ($schemaClass !== null) {
-                    // The class is found again by its key, so the files read in between are not all kept.
-                    [$declaration, $name, $fields, $form] = $schemaClass;
-                    $schemaClasses[] = [$declaration->file->path, $declaration->file->nodeToKey($declaration->node), $declaration->name, $name, $fields, $form];
-                }
-            }
+            $schemaClasses[$path] = $reader->fileToSchemaClasses($files->projectFile($path));
         }
         $schemas = $reader->unreadSchemas;
-        foreach ($schemaClasses as [$path, $key, $class, $name, $fields, $form]) {
-            $file = $files->projectFile($path);
-            $schema = $reader->classToSchema(new ClassDeclaration($class, $file->keyToClassLike($key), $file), $name, $fields, $form);
-            if ($schema !== null) {
-                $schemas[] = $schema;
-            }
+        foreach (array_filter($schemaClasses) as $path => $fileClasses) {
+            array_push($schemas, ...$reader->fileToSchemas($files->projectFile($path), $fileClasses));
         }
         foreach ($paths as $path) {
             $reader->fileToFieldWarnings($files->projectFile($path));
@@ -99,6 +88,43 @@ final class ClassesToSchemas
             $reader->errors,
             $reader->warnings,
         );
+    }
+
+    /**
+     * Registers the schema names of the file's class-likes. Nothing of the file's tree outlives the call, since
+     * a file that is not kept is parsed again each time it is read: the classes are found again by their key.
+     *
+     * @return list<array{string, string, string, ConstantValue|null, AnnotationForm}> node key, class, schema
+     *                                                                                 name, `fields:` and annotation
+     *                                                                                 of each class whose fields
+     *                                                                                 are to be read
+     */
+    private function fileToSchemaClasses(ParsedFile $file): array
+    {
+        $schemaClasses = [];
+        foreach ((new NodeFinder())->findInstanceOf($file->statements, ClassLike::class) as $node) {
+            $schemaClass = $this->nodeToSchemaClass($node, $file);
+            if ($schemaClass !== null) {
+                [$declaration, $name, $fields, $form] = $schemaClass;
+                $schemaClasses[] = [$file->nodeToKey($declaration->node), $declaration->name, $name, $fields, $form];
+            }
+        }
+
+        return $schemaClasses;
+    }
+
+    /**
+     * @param list<array{string, string, string, ConstantValue|null, AnnotationForm}> $schemaClasses
+     * @return list<NamedSchema>
+     */
+    private function fileToSchemas(ParsedFile $file, array $schemaClasses): array
+    {
+        $schemas = [];
+        foreach ($schemaClasses as [$key, $class, $name, $fields, $form]) {
+            $schemas[] = $this->classToSchema(new ClassDeclaration($class, $file->keyToClassLike($key), $file), $name, $fields, $form);
+        }
+
+        return $schemas;
     }
 
     /**
@@ -187,20 +213,22 @@ final class ClassesToSchemas
             return new ClassDeclaration($declaredName, $node, $file);
         }
         $class = $node->namespacedName->toString();
-        $lookup = $this->classes->lookup($class, $file->locationOf($node));
-        if ($lookup->declaration === null) {
-            $this->addErrors($lookup->errors);
+        $errors = $this->classes->duplicateErrors($class);
+        if ($errors !== []) {
+            $this->addErrors($errors);
 
             return null;
         }
 
-        return $lookup->declaration;
+        return new ClassDeclaration($class, $node, $file);
     }
 
     /**
+     * A schema with no field is still declared, so the references to it add no error of their own.
+     *
      * @param ConstantValue|null $declaredFields the `fields:` of its #[BidirektSchema], which come after the annotated ones
      */
-    private function classToSchema(ClassDeclaration $declaration, string $name, ?ConstantValue $declaredFields, AnnotationForm $form): ?NamedSchema
+    private function classToSchema(ClassDeclaration $declaration, string $name, ?ConstantValue $declaredFields, AnnotationForm $form): NamedSchema
     {
         [$members, $complete] = $this->classToMembers($declaration, new ClassScope($declaration, $declaration), []);
         $properties = [];
@@ -224,8 +252,6 @@ final class ClassesToSchemas
         $location = $declaration->file->locationOf($declaration->node);
         if ($properties === [] && $complete) {
             $this->addErrors([new Diagnostic(sprintf('schema "%s" has no field: %s', $name, $fix), $location)]);
-
-            return null;
         }
 
         return new NamedSchema($name, new ObjectNode($properties), $location);

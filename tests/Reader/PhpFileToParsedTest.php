@@ -10,8 +10,11 @@ use Bidirekt\PhpSdk\Reader\ParsedFile;
 use Bidirekt\PhpSdk\Reader\PhpFileToParsed;
 use PhpParser\Node\Name;
 use PhpParser\Node\Stmt\Class_;
+use PhpParser\ErrorHandler;
 use PhpParser\NodeFinder;
+use PhpParser\Parser;
 use PHPUnit\Framework\TestCase;
+use RangeException;
 
 final class PhpFileToParsedTest extends TestCase
 {
@@ -87,6 +90,29 @@ final class PhpFileToParsedTest extends TestCase
         self::assertEquals(
             new Diagnostic('syntax error: unexpected EOF: fix the code so PHP can parse it', new SourceLocation(self::FILE, 6)),
             (new PhpFileToParsed())->codeToParsed(self::FILE, $code),
+        );
+    }
+
+    public function testTurnsATokenOfANewerPhpThanThePhpParserReadsIntoAnError(): void
+    {
+        $parser = new class implements Parser {
+            public function parse(string $code, ?ErrorHandler $errorHandler = null): ?array
+            {
+                throw new RangeException('The lexer returned an invalid token (id=408, value=|>)');
+            }
+
+            public function getTokens(): array
+            {
+                return [];
+            }
+        };
+
+        self::assertEquals(
+            new Diagnostic(
+                sprintf('cannot parse the file: nikic/php-parser does not read the syntax of PHP %d.%d yet: update it with composer update nikic/php-parser', PHP_MAJOR_VERSION, PHP_MINOR_VERSION),
+                new SourceLocation(self::FILE, 1),
+            ),
+            (new PhpFileToParsed($parser))->codeToParsed(self::FILE, "<?php\n\$name = 'Rex' |> trim(...);\n"),
         );
     }
 
