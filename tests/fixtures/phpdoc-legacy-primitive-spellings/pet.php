@@ -23,4 +23,16 @@ final class Pet
     /** @var list<integer> */
     #[BidirektField]
     public array $scores;
+
+    /** @var integer|double */
+    #[BidirektField]
+    public $height;
+
+    /** @var int|double */
+    #[BidirektField]
+    public $length;
+
+    /** @var integer|float */
+    #[BidirektField]
+    public $width;
 }

@@ -30,7 +30,7 @@ final class TypeToSchemaNode
     private const PRIMITIVES = ['string' => 'string', 'int' => 'integer', 'bool' => 'boolean', 'float' => 'number'];
 
     /** phpDocumentor's spellings, which a native type reads as class names */
-    private const PHPDOC_PRIMITIVES = ['integer' => 'integer', 'boolean' => 'boolean', 'double' => 'number'];
+    private const PHPDOC_SPELLINGS = ['integer' => 'int', 'boolean' => 'bool', 'double' => 'float'];
 
     private const KEYWORDS = [
         'string', 'int', 'integer', 'bool', 'boolean', 'float', 'double', 'array', 'list', 'mixed', 'object',
@@ -200,7 +200,7 @@ final class TypeToSchemaNode
         if (count($members) === 1) {
             return $this->memberToNode($members[0], $context);
         }
-        $names = array_map(static fn(TypeNode $member): string => strtolower((string) $member), $members);
+        $names = array_map(static fn(TypeNode $member): string => self::writtenToName((string) $member, $context->written), $members);
         sort($names);
         if ($names === ['float', 'int']) {
             return new PrimitiveNode('number');
@@ -249,13 +249,9 @@ final class TypeToSchemaNode
      */
     private function identifierToNode(IdentifierTypeNode $identifier, string $text, TypeContext $context): SchemaNode|array
     {
-        $name = strtolower($identifier->name);
-        $primitives = self::PRIMITIVES;
-        if (!$context->written->native) {
-            $primitives += self::PHPDOC_PRIMITIVES;
-        }
-        if (isset($primitives[$name])) {
-            return new PrimitiveNode($primitives[$name]);
+        $name = self::writtenToName($identifier->name, $context->written);
+        if (isset(self::PRIMITIVES[$name])) {
+            return new PrimitiveNode(self::PRIMITIVES[$name]);
         }
         if ($name === 'self') {
             return $this->declarationToSchemaNode($context->scope->selfClass, $text, $context->location, $context->form);
@@ -438,6 +434,16 @@ final class TypeToSchemaNode
         }
 
         return false;
+    }
+
+    private static function writtenToName(string $name, WrittenType $written): string
+    {
+        $name = strtolower($name);
+        if ($written->native) {
+            return $name;
+        }
+
+        return self::PHPDOC_SPELLINGS[$name] ?? $name;
     }
 
     private static function isKeyword(IdentifierTypeNode $identifier, WrittenType $written): bool

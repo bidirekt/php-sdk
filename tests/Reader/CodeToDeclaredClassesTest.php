@@ -99,4 +99,57 @@ final class CodeToDeclaredClassesTest extends TestCase
 
         self::assertSame(['pet', 'named', 'status', 'owner'], CodeToDeclaredClasses::codeToCandidateNames($code));
     }
+
+    public function testFindsTheNameOfADeclarationBelowACommentEndingInAKeyword(): void
+    {
+        $code = <<<'PHP'
+            <?php
+
+            // The status of a pet, sent as a string enum
+            enum Status: string {}
+            // One value per animal class
+            #[Deprecated]
+            enum Kind: string {}
+            PHP;
+
+        self::assertSame(['enum', 'status', 'kind'], CodeToDeclaredClasses::codeToCandidateNames($code));
+    }
+
+    public function testFindsTheNamesAfterABannerOfSlashesOrHashesBelowAKeyword(): void
+    {
+        $code = <<<'PHP'
+            <?php
+
+            final class Labels
+            {
+                // One label per enum
+                ////////////////////////////////////////////////////////////////////////////
+                # One label per class
+                ############################################################################
+            }
+
+            enum Status: string {}
+            PHP;
+
+        self::assertSame(['labels', 'status'], CodeToDeclaredClasses::codeToCandidateNames($code));
+    }
+
+    public function testFallsBackToEveryWordOfTheCodeWhenThePatternExceedsPcreLimits(): void
+    {
+        $code = <<<'PHP'
+            <?php
+
+            final class Pet {}
+            enum Status: string {}
+            PHP;
+        $limit = (string) ini_get('pcre.backtrack_limit');
+        ini_set('pcre.backtrack_limit', '1');
+        try {
+            $names = CodeToDeclaredClasses::codeToCandidateNames($code);
+        } finally {
+            ini_set('pcre.backtrack_limit', $limit);
+        }
+
+        self::assertSame(['php', 'final', 'class', 'pet', 'enum', 'status', 'string'], $names);
+    }
 }

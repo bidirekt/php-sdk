@@ -34,8 +34,8 @@ final class BinTest extends TestCase
         for ($i = 0; $i < 2000; ++$i) {
             $methods .= "    protected function getService{$i}()\n    {\n        return \$this->services['app.service_{$i}'] = new \\App\\Service{$i}(\$this->get('logger'), ['key' => 'value_{$i}', 'limit' => {$i}]);\n    }\n\n";
         }
-        // About 400KB, which takes more than 32M to parse.
-        file_put_contents($project . '/Container.php', "<?php\n\nnamespace Cache;\n\nfinal class Container\n{\n" . $methods . "}\n");
+        // About 400KB, which takes more than 32M to parse; the import makes generate parse it.
+        file_put_contents($project . '/Container.php', "<?php\n\nnamespace Cache;\n\nuse Bidirekt\\PhpSdk\\BidirektSchema;\n\nfinal class Container\n{\n" . $methods . "}\n");
         file_put_contents($project . '/Pet.php', <<<'PHP'
             <?php
 
@@ -79,7 +79,8 @@ final class BinTest extends TestCase
         $home = sys_get_temp_dir() . '/php-sdk-bin-' . bin2hex(random_bytes(6));
         $project = $home . '/project';
         mkdir($project, 0777, true);
-        file_put_contents($project . '/deep.php', '<?php $sum = ' . str_repeat('(', 600) . '1' . str_repeat(' + 1)', 600) . ";\n");
+        // The import makes generate parse the file.
+        file_put_contents($project . '/deep.php', "<?php\n\nuse Bidirekt\\PhpSdk\\BidirektSchema;\n\n\$sum = " . str_repeat('(', 600) . '1' . str_repeat(' + 1)', 600) . ";\n");
         file_put_contents($project . '/Pet.php', <<<'PHP'
             <?php
 

@@ -1,0 +1,2 @@
+_ide_helper_models.php:5 class "App\Models\Pet" is declared in more than one file generate reads: keep a single declaration
+src/Pet.php:9 class "App\Models\Pet" is declared in more than one file generate reads: keep a single declaration

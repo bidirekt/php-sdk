@@ -7,29 +7,18 @@ namespace Bidirekt\PhpSdk\Reader;
 use PhpParser\ErrorHandler\Collecting;
 use PhpParser\NameContext;
 use PhpParser\Node;
-use PhpParser\Node\Attribute;
-use PhpParser\Node\Expr\ClassConstFetch;
-use PhpParser\Node\Expr\New_;
 use PhpParser\Node\Name;
 use PhpParser\Node\Name\FullyQualified;
 use PhpParser\Node\Name\Relative;
-use PhpParser\Node\Stmt\Class_;
-use PhpParser\Node\Stmt\ClassLike;
-use PhpParser\Node\Stmt\Enum_;
 use PhpParser\Node\Stmt\GroupUse;
-use PhpParser\Node\Stmt\Interface_;
 use PhpParser\Node\Stmt\Namespace_;
-use PhpParser\Node\Stmt\TraitUse;
 use PhpParser\Node\Stmt\Use_;
 use PhpParser\NodeVisitorAbstract;
 
 /**
- * Resolves the class names the reader reads as PHP-Parser's NameResolver does, the written one kept in the
- * "originalName" attribute: the names of attributes, of `extends`, `implements` and trait `use`, and the class
- * of `X::NAME` and `new X()`, and names each class-like. The other names, which nothing reads, are left as
- * written. Keeps the namespace and `use` aliases in force on every node too, for the names written in
- * docblocks; its contexts are built from names of their own, not the tree's, so the summaries that keep one
- * outlive the tree.
+ * Keeps the namespace and `use` aliases in force on every node, because the NameResolver does not resolve the
+ * names written in docblocks. Its contexts are built from names of their own, not the tree's, so the summaries
+ * that keep one outlive the tree.
  */
 final class NameContextVisitor extends NodeVisitorAbstract
 {
@@ -91,52 +80,8 @@ final class NameContextVisitor extends NodeVisitorAbstract
             }
         }
         $node->setAttribute(self::ATTRIBUTE, $this->context);
-        $this->resolveNames($node);
 
         return null;
-    }
-
-    private function resolveNames(Node $node): void
-    {
-        if ($node instanceof Attribute) {
-            $node->name = $this->classNameToResolved($node->name);
-
-            return;
-        }
-        if (($node instanceof ClassConstFetch || $node instanceof New_) && $node->class instanceof Name) {
-            $node->class = $this->classNameToResolved($node->class);
-
-            return;
-        }
-        if ($node instanceof TraitUse) {
-            $node->traits = array_map(fn(Name $trait): Name => $this->classNameToResolved($trait), $node->traits);
-
-            return;
-        }
-        if (!$node instanceof ClassLike) {
-            return;
-        }
-        if ($node instanceof Class_ && $node->extends !== null) {
-            $node->extends = $this->classNameToResolved($node->extends);
-        }
-        if ($node instanceof Class_ || $node instanceof Enum_) {
-            $node->implements = array_map(fn(Name $interface): Name => $this->classNameToResolved($interface), $node->implements);
-        }
-        if ($node instanceof Interface_) {
-            $node->extends = array_map(fn(Name $interface): Name => $this->classNameToResolved($interface), $node->extends);
-        }
-        $node->namespacedName = null;
-        if ($node->name !== null) {
-            $node->namespacedName = Name::concat($this->context->getNamespace(), (string) $node->name);
-        }
-    }
-
-    private function classNameToResolved(Name $name): Name
-    {
-        $resolved = clone $name;
-        $resolved->setAttribute('originalName', $name);
-
-        return $this->context->getResolvedName($resolved, Use_::TYPE_NORMAL) ?? $resolved;
     }
 
     private static function namespaceToContext(?Name $namespace): NameContext

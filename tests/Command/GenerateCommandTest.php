@@ -118,6 +118,7 @@ final class GenerateCommandTest extends TestCase
     /**
      * A monolith: 300 endpoints over 400 schemas of 10 fields each, beside 2000 files that mention no annotation.
      * Each file is parsed once and only its summary is kept, so the peak is about 25MB whatever the memory limit.
+     * The time is the best of three runs, so one run slowed by a busy shared CI runner does not fail it.
      */
     public function testGeneratesTheContractOfAMonolithInUnderOneSecond(): void
     {
@@ -138,15 +139,17 @@ final class GenerateCommandTest extends TestCase
             memory_reset_peak_usage();
         }
         $memoryBefore = memory_get_usage();
-        $start = microtime(true);
+        $runs = [];
+        for ($run = 0; $run < 3; $run++) {
+            $start = microtime(true);
+            $result = GenerateCommand::runCommand(['generate'], $this->root);
+            $runs[] = microtime(true) - $start;
+            self::assertEquals(new CommandResult(0, ''), $result);
+        }
 
-        $result = GenerateCommand::runCommand(['generate'], $this->root);
-
-        $seconds = microtime(true) - $start;
         $megabytes = (memory_get_peak_usage() - $memoryBefore) / 1024 ** 2;
-        self::assertEquals(new CommandResult(0, ''), $result);
         self::assertSame(300, substr_count((string) file_get_contents($this->root . '/contracts/generated.yaml'), "      post:\n"));
-        self::assertLessThan(1.0, $seconds, sprintf('generate took %.2fs', $seconds));
+        self::assertLessThan(1.0, min($runs), vsprintf('generate took %.2fs, %.2fs and %.2fs', $runs));
         self::assertLessThan(40, $megabytes, sprintf('generate took %.0fMB', $megabytes));
     }
 

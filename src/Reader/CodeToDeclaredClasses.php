@@ -15,9 +15,16 @@ final class CodeToDeclaredClasses
 {
     /**
      * A class-like keyword, then whitespace or comments, then a name: a declaration, or the same words in a
-     * comment, a string or a heredoc, which only the tokens tell apart.
+     * comment, a string or a heredoc, which only the tokens tell apart. Only the keyword is consumed, since the
+     * name may be the keyword of the next declaration, as after a comment ending in "class"; the separators are
+     * possessive, since a run of slashes or hashes would otherwise backtrack exponentially.
      */
-    private const CANDIDATE_PATTERN = '~\b(?:class|interface|trait|enum)(?:\s|/\*.*?\*/|(?://|#)[^\n]*)+([a-z_\x80-\xff][a-z0-9_\x80-\xff]*)~is';
+    private const CANDIDATE_PATTERN = '~\b(?:class|interface|trait|enum)(?=(?:\s++|/\*.*?\*/|(?://|#)[^\n]*+)++([a-z_\x80-\xff][a-z0-9_\x80-\xff]*))~is';
+
+    /**
+     * The ASCII bytes a name cannot hold.
+     */
+    private const NON_NAME_BYTES = [[0x00, 0x2f], [0x3a, 0x40], [0x5b, 0x5e], [0x60, 0x60], [0x7b, 0x7f]];
 
     /**
      * The short names the file may declare a class-like under, read from its text: every one it declares, and
@@ -27,9 +34,28 @@ final class CodeToDeclaredClasses
      */
     public static function codeToCandidateNames(string $code): array
     {
-        preg_match_all(self::CANDIDATE_PATTERN, $code, $matches);
+        if (preg_match_all(self::CANDIDATE_PATTERN, $code, $matches) === false) {
+            return self::codeToWords($code);
+        }
 
         return array_values(array_unique(array_map('strtolower', $matches[1])));
+    }
+
+    /**
+     * Every word of the code, which holds every name it declares, for when the pattern exceeds PCRE's limits:
+     * split without a pattern, so it cannot fail too.
+     *
+     * @return list<string> in lowercase
+     */
+    private static function codeToWords(string $code): array
+    {
+        $separators = '';
+        foreach (self::NON_NAME_BYTES as [$first, $last]) {
+            $separators .= implode('', array_map('chr', range($first, $last)));
+        }
+        $words = explode(' ', strtr(strtolower($code), $separators, str_repeat(' ', strlen($separators))));
+
+        return array_values(array_diff(array_unique($words), ['']));
     }
 
     /**

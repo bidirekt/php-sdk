@@ -7,8 +7,10 @@ namespace Bidirekt\PhpSdk\Reader;
 use Bidirekt\PhpSdk\Model\Diagnostic;
 use Bidirekt\PhpSdk\Model\SourceLocation;
 use PhpParser\Error;
+use PhpParser\ErrorHandler\Collecting;
 use PhpParser\Node;
 use PhpParser\NodeTraverser;
+use PhpParser\NodeVisitor\NameResolver;
 use PhpParser\Parser;
 use PhpParser\ParserFactory;
 use RangeException;
@@ -42,7 +44,8 @@ final class PhpFileToParsed
             return $statements;
         }
         $nodes = new FileNodesVisitor($code);
-        $traverser = new NodeTraverser(new NameContextVisitor(), $nodes);
+        $resolver = new NameResolver(new Collecting(), ['preserveOriginalNames' => true, 'replaceNodes' => true]);
+        $traverser = new NodeTraverser($resolver, new NameContextVisitor(), $nodes);
         $resolved = array_values($traverser->traverse($statements));
 
         return new ParsedFile($path, $code, $resolved, array_values($this->parser->getTokens()), $nodes->nodes);
