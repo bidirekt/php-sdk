@@ -55,7 +55,47 @@ final class DirectoryToProject
             }
         }
 
-        return new Composer(RelativePathToAbsolute::relativePathToAbsolute($directory, $vendor), $devPaths, $requiredPackages);
+        $vendorDirectory = RelativePathToAbsolute::relativePathToAbsolute($directory, $vendor);
+
+        return new Composer($vendorDirectory, $devPaths, $requiredPackages, self::vendorToInstalledPackages($vendorDirectory));
+    }
+
+    /**
+     * @return list<InstalledPackage>|null
+     */
+    private static function vendorToInstalledPackages(string $vendorDirectory): ?array
+    {
+        $json = json_decode((string) @file_get_contents($vendorDirectory . '/composer/installed.json'), true);
+        if (!is_array($json)) {
+            return null;
+        }
+        // Composer 1 writes the list of packages alone.
+        $packages = $json['packages'] ?? $json;
+        $devNames = $json['dev-package-names'] ?? [];
+        if (!is_array($packages) || !is_array($devNames)) {
+            return null;
+        }
+        $installed = [];
+        foreach ($packages as $package) {
+            if (!is_array($package) || !is_string($package['name'] ?? null)) {
+                continue;
+            }
+            $names = [strtolower($package['name'])];
+            foreach (['provide', 'replace'] as $key) {
+                if (is_array($package[$key] ?? null)) {
+                    foreach (array_keys($package[$key]) as $name) {
+                        $names[] = strtolower((string) $name);
+                    }
+                }
+            }
+            $installPath = $package['install-path'] ?? null;
+            if (!is_string($installPath)) {
+                $installPath = null;
+            }
+            $installed[] = new InstalledPackage($names, $installPath, in_array($package['name'], $devNames, true));
+        }
+
+        return $installed;
     }
 
     /**

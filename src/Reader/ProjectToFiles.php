@@ -127,21 +127,15 @@ final class ProjectToFiles
             return [];
         }
         $vendor = realpath($composer->vendorDirectory);
-        $installed = json_decode((string) @file_get_contents($composer->vendorDirectory . '/composer/installed.json'), true);
-        if ($vendor === false || !is_array($installed)) {
-            return [];
-        }
-        $packages = $installed['packages'] ?? $installed;
-        $devNames = $installed['dev-package-names'] ?? [];
-        if (!is_array($packages) || !is_array($devNames)) {
+        if ($vendor === false) {
             return [];
         }
         $directories = [];
-        foreach ($packages as $package) {
-            if (!is_array($package) || !is_string($package['install-path'] ?? null) || in_array($package['name'] ?? null, $devNames, true)) {
+        foreach ($composer->installedPackages ?? [] as $package) {
+            if ($package->installPath === null || $package->dev) {
                 continue;
             }
-            $real = realpath($composer->vendorDirectory . '/composer/' . $package['install-path']);
+            $real = realpath($composer->vendorDirectory . '/composer/' . $package->installPath);
             if ($real !== false && is_dir($real) && !str_starts_with(self::pathToSlashes($real) . '/', self::pathToSlashes($vendor) . '/')) {
                 $directories[] = $real;
             }

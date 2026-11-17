@@ -110,6 +110,11 @@ final class ClassesToSchemas
         }
         $read = $this->schemas->classToAnnotation($class, $file);
         if ($read === null) {
+            if ($class->unimportedSchema) {
+                $this->readClasses[spl_object_id($class)] = true;
+                $this->addUnreadClass($class, null);
+            }
+
             return null;
         }
         $this->readClasses[spl_object_id($class)] = true;

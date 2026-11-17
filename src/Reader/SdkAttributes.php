@@ -125,9 +125,9 @@ final class SdkAttributes
     }
 
     /**
-     * Whether the element has a #[BidirektField] written without its `use`.
+     * Whether the element has the SDK attribute `$class` written without its `use`.
      */
-    public static function hasUnimportedField(Node $element): bool
+    public static function hasUnimportedAttribute(Node $element, string $class): bool
     {
         if (!property_exists($element, 'attrGroups') || !is_array($element->attrGroups)) {
             return false;
@@ -137,7 +137,7 @@ final class SdkAttributes
                 continue;
             }
             foreach ($group->attrs as $attribute) {
-                if (self::nameToUnimportedClass($attribute->name, $attribute) === BidirektField::class) {
+                if (self::nameToUnimportedClass($attribute->name, $attribute) === $class) {
                     return true;
                 }
             }

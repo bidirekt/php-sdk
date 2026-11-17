@@ -1,3 +1,4 @@
+src/Breed.php:7 #[BidirektSchema] resolves to "App\BidirektSchema", so it is not read: write use Bidirekt\PhpSdk\BidirektSchema
 src/Owner.php:11 #[BidirektField] resolves to "App\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField
 src/Owner.php:12 #[BidirektField] resolves to "App\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField
 src/Pet.php:13 #[BidirektField] resolves to "App\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField

@@ -16,7 +16,7 @@ final class ProjectToContract
     public static function projectToContract(Project $project): ReadResult
     {
         $files = new ParsedFiles();
-        $classes = new ClassIndex($files, $project->composer?->vendorDirectory, $project->composer->requiredPackages ?? []);
+        $classes = new ClassIndex($files, $project->composer);
         $summaries = [];
         $syntaxErrors = [];
         $tagErrors = [];

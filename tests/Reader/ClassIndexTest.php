@@ -159,7 +159,7 @@ final class ClassIndexTest extends TestCase
         $project = DirectoryToProject::directoryToProject($this->root);
         self::assertInstanceOf(Project::class, $project);
         $files = new ParsedFiles();
-        $index = new ClassIndex($files, $project->composer?->vendorDirectory);
+        $index = new ClassIndex($files, $project->composer);
         foreach (ProjectToFiles::projectToFiles($project)->paths as $path) {
             $read = $files->projectFileToRead($path);
             self::assertNotInstanceOf(Diagnostic::class, $read);

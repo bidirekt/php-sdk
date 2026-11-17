@@ -124,6 +124,10 @@ final class TagsToResources
         if (preg_match(self::BODY_PATTERN, implode(' ', $arguments), $match) !== 1) {
             return;
         }
+        // `\` and `namespace\` alone name no class.
+        if (preg_match('/^(?:namespace)?\\\\$/i', $match[1]) === 1) {
+            return;
+        }
         $class = NameContextVisitor::classNameToFullyQualified(NameContextVisitor::nodeToNameContext($element), $match[1]);
         $this->bodyClasses->addBody($match[1], $class, $tag->location);
     }

@@ -31,13 +31,11 @@ final class ClassIndex
     private array $vendorFiles = [];
 
     /**
-     * @param string|null $vendorDirectory the Composer project's vendor folder, null without a `composer.json`
-     * @param list<string> $requiredPackages the packages its `composer.json` requires
+     * @param Composer|null $composer the project's, null without a `composer.json`
      */
     public function __construct(
         private ParsedFiles $files,
-        private ?string $vendorDirectory,
-        private array $requiredPackages = [],
+        private ?Composer $composer,
     ) {}
 
     /**
@@ -46,13 +44,7 @@ final class ClassIndex
      */
     public function missingClassFix(): string
     {
-        $installed = $this->installedPackages();
-        $missing = [];
-        foreach ($this->requiredPackages as $package) {
-            if ($installed !== null && !isset($installed[strtolower($package)])) {
-                $missing[] = sprintf('"%s"', $package);
-            }
-        }
+        $missing = $this->missingPackages();
         if ($missing === []) {
             return 'declare it in the project or require its package with composer';
         }
@@ -61,29 +53,29 @@ final class ClassIndex
     }
 
     /**
-     * @return array<string, true>|null the packages of the vendor folder's `composer/installed.json`, in lowercase, null without one
+     * @return list<string> the required packages, quoted, that no installed package is, provides or replaces; none
+     *                      without the vendor folder's `composer/installed.json`
      */
-    private function installedPackages(): ?array
+    private function missingPackages(): array
     {
-        if ($this->vendorDirectory === null) {
-            return null;
-        }
-        $json = json_decode((string) @file_get_contents($this->vendorDirectory . '/composer/installed.json'), true);
-        if (!is_array($json)) {
-            return null;
-        }
-        $packages = $json['packages'] ?? $json;
-        if (!is_array($packages)) {
-            return null;
+        $composer = $this->composer;
+        if ($composer === null || $composer->installedPackages === null) {
+            return [];
         }
         $installed = [];
-        foreach ($packages as $package) {
-            if (is_array($package) && is_string($package['name'] ?? null)) {
-                $installed[strtolower($package['name'])] = true;
+        foreach ($composer->installedPackages as $package) {
+            foreach ($package->names as $name) {
+                $installed[$name] = true;
+            }
+        }
+        $missing = [];
+        foreach ($composer->requiredPackages as $package) {
+            if (!isset($installed[strtolower($package)])) {
+                $missing[] = sprintf('"%s"', $package);
             }
         }
 
-        return $installed;
+        return $missing;
     }
 
     public function addFileSummary(FileSummary $file): void
@@ -119,11 +111,11 @@ final class ClassIndex
         if (count($declared) > 1) {
             return new ClassLookup(null, $this->duplicateErrors($class));
         }
-        if ($this->vendorDirectory === null || self::isBuiltIn($class, true)) {
+        if ($this->composer === null || self::isBuiltIn($class, true)) {
             return new ClassLookup(null);
         }
         if (!$this->vendorRead) {
-            $this->vendor = VendorToClassLoader::vendorToClassLoader($this->vendorDirectory);
+            $this->vendor = VendorToClassLoader::vendorToClassLoader($this->composer->vendorDirectory);
             $this->vendorRead = true;
         }
         if ($this->vendor === null) {

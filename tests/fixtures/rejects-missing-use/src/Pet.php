@@ -12,4 +12,7 @@ final class Pet
 
     #[BidirektField]
     public string $nickname;
+
+    #[\Bidirekt\PhpSdk\BidirektField]
+    public Breed $breed;
 }

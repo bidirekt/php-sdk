@@ -8,8 +8,12 @@ set -eu
 dir=$(cd "$(dirname "$0")" && pwd)
 project=${COMPOSE_PROJECT_NAME:-php-sdk-scenarios}
 
+# A run that mounts a volume keeps its container (no --rm) for the down on exit, which removes it before the volumes:
+# with --rm, the daemon removes a container a signal killed only after down tried the volumes, which then stay.
+# Compose takes the kept containers of another profile's service for orphans, and its warning would reach the outputs
+# the scenarios compare.
 compose() {
-  docker compose --progress quiet -p "$project" -f "$dir/compose.yaml" "$@"
+  COMPOSE_IGNORE_ORPHANS=1 docker compose --progress quiet -p "$project" -f "$dir/compose.yaml" "$@"
 }
 
 failed=0
@@ -81,7 +85,7 @@ compose up -d --wait
 # docker compose run reads all of a stdin that is not a terminal, such as a script piped to sh.
 BIDIREKT_API_KEY=$(compose run --rm -T setup </dev/null)
 export BIDIREKT_API_KEY
-if ! output=$(compose run --rm -T bidirekt create-environment production 2>&1 </dev/null); then
+if ! output=$(compose run -T bidirekt create-environment production 2>&1 </dev/null); then
   printf 'bidirekt create-environment failed: %s\n' "$output" >&2
   exit 1
 fi
@@ -96,7 +100,7 @@ fail() {
 
 # Runs a bidirekt command in the scenario's copy, or prints why it failed and returns 1.
 bidirekt() {
-  if ! output=$(compose run --rm -T -w "/work/$name" bidirekt "$@" 2>&1 </dev/null); then
+  if ! output=$(compose run -T -w "/work/$name" bidirekt "$@" 2>&1 </dev/null); then
     broker_log=1
     fail "$name" "bidirekt $1 failed:
 $output"
@@ -113,7 +117,7 @@ run_step() {
   esac
   code=0
   # compose prints an empty line of its own when the command fails: only its messages go to the transcript.
-  compose run --rm -T "$@" >>"$tmp/transcript" 2>"$tmp/compose" </dev/null || code=$?
+  compose run -T "$@" >>"$tmp/transcript" 2>"$tmp/compose" </dev/null || code=$?
   grep . "$tmp/compose" >>"$tmp/transcript" || true
   if [ -n "$(tail -c 1 "$tmp/transcript")" ]; then
     echo >>"$tmp/transcript"
@@ -131,14 +135,14 @@ run_flow() {
   for service in $(flow_services "$name"); do
     php=php-$(cat "$dir/$name/$service/.php-version")
     if [ "$copied" = 0 ]; then
-      if ! output=$(compose run --rm -T "$php" sh -c 'rm -rf "$1" && cp -R "/scenarios/$2" "$1"' sh "$copy" "$name" 2>&1 </dev/null); then
+      if ! output=$(compose run -T "$php" sh -c 'rm -rf "$1" && cp -R "/scenarios/$2" "$1"' sh "$copy" "$name" 2>&1 </dev/null); then
         fail "$name" "copying the scenario failed:
 $output"
         return
       fi
       copied=1
     fi
-    if ! output=$(compose run --rm -T -w "$copy/$service" "$php" sh -c 'rm -rf vendor && composer install --no-progress' 2>&1 </dev/null); then
+    if ! output=$(compose run -T -w "$copy/$service" "$php" sh -c 'rm -rf vendor && composer install --no-progress' 2>&1 </dev/null); then
       fail "$name" "composer install in $service failed:
 $output"
       return
@@ -184,7 +188,7 @@ for name in "$@"; do
   fi
   php=php-$(cat "$dir/$name/.php-version")
 
-  if ! contract=$(compose run --rm -T "$php" sh /scenarios/generate.sh "$name" 2>&1 </dev/null); then
+  if ! contract=$(compose run -T "$php" sh /scenarios/generate.sh "$name" 2>&1 </dev/null); then
     fail "$name" "$contract"
     continue
   fi
