@@ -1,0 +1,1 @@
+app/routes.php:45 cannot translate class "ValidationError": add "@bidirekt schema" above it

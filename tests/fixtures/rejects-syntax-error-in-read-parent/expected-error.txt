@@ -1,1 +1,1 @@
-animal.php:5 syntax error: unexpected ';': fix the code so PHP can parse it
+animal.php:5 syntax error: unexpected token ";": fix the code so PHP can parse it

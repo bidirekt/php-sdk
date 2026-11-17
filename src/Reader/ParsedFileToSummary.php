@@ -145,6 +145,7 @@ final class ParsedFileToSummary
             $this->nodeToAttributes($statement),
             $statement->isStatic(),
             $members,
+            SdkAttributes::hasUnimportedField($statement),
         );
     }
 
@@ -177,6 +178,7 @@ final class ParsedFileToSummary
                 $this->nodeToAttributes($param),
                 false,
                 [new MemberSummary($name, $this->file->locationOf($param), $source, $mentionsSpecialClass)],
+                SdkAttributes::hasUnimportedField($param),
             );
         }
 

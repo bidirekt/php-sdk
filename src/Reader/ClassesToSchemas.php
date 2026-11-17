@@ -298,7 +298,7 @@ final class ClassesToSchemas
         $attributes = self::fieldAttributes($declaration->attributes);
         $tag = $class->file->tags->fieldTag($declaration->key);
         if ($attributes === [] && $tag === null) {
-            return [[], true];
+            return [[], !$declaration->unimportedField];
         }
         if ($declaration->static) {
             $this->addStaticWarning($attributes, $tag);
@@ -334,10 +334,11 @@ final class ClassesToSchemas
         }
         $this->addErrors([new Diagnostic(
             sprintf(
-                'cannot read the %s "%s" of %s: declare it in the project or require its package with composer',
+                'cannot read the %s "%s" of %s: %s',
                 $relation,
                 $name->written,
                 $class->summary->description,
+                $this->classes->missingClassFix(),
             ),
             $name->location,
         )]);

@@ -269,7 +269,7 @@ final class ConstantExpressionToValue
         }
         $declaration = $class;
         if (is_string($declaration)) {
-            $declaration = $this->classToDeclaration($declaration, $location, sprintf('constant "%s"', $shown));
+            $declaration = $this->classToDeclaration($declaration, $location, sprintf('constant "%s"', $fetch->text));
             if (!$declaration instanceof ClassDeclaration) {
                 return $declaration;
             }
@@ -308,7 +308,7 @@ final class ConstantExpressionToValue
         if (isset($resolving[$key])) {
             return [new Diagnostic(sprintf('enum case "%s" refers to itself: give it a value', $shown), $location)];
         }
-        $declaration = $this->classToDeclaration($class, $location, sprintf('enum case "%s"', $shown));
+        $declaration = $this->classToDeclaration($class, $location, sprintf('enum case "%s"', $fetch->text));
         if (!$declaration instanceof ClassDeclaration) {
             return $declaration;
         }
@@ -381,7 +381,7 @@ final class ConstantExpressionToValue
         }
         if ($lookup->declaration === null) {
             return [new Diagnostic(
-                sprintf('cannot find class "%s" of %s: declare it in the project or require its package with composer', $class, $what),
+                sprintf('cannot find class "%s" of %s: %s', $class, $what, $this->classes->missingClassFix()),
                 $location,
             )];
         }

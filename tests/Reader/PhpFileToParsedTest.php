@@ -78,7 +78,7 @@ final class PhpFileToParsedTest extends TestCase
             PHP;
 
         self::assertEquals(
-            new Diagnostic("syntax error: unexpected ';': fix the code so PHP can parse it", new SourceLocation(self::FILE, 7)),
+            new Diagnostic('syntax error: unexpected token ";": fix the code so PHP can parse it', new SourceLocation(self::FILE, 7)),
             (new PhpFileToParsed())->codeToParsed(self::FILE, $code),
         );
     }
@@ -88,7 +88,7 @@ final class PhpFileToParsedTest extends TestCase
         $code = "<?php\n\nfinal class Owner\n{\n    public string \$name;\n";
 
         self::assertEquals(
-            new Diagnostic('syntax error: unexpected EOF: fix the code so PHP can parse it', new SourceLocation(self::FILE, 6)),
+            new Diagnostic('syntax error: unexpected end of file: fix the code so PHP can parse it', new SourceLocation(self::FILE, 6)),
             (new PhpFileToParsed())->codeToParsed(self::FILE, $code),
         );
     }

@@ -1,0 +1,1 @@
+app/routes.php:20 method "get" must be uppercase: write "GET"

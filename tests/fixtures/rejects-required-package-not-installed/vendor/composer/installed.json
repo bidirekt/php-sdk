@@ -1,0 +1,10 @@
+{
+    "packages": [
+        {
+            "name": "slim/slim",
+            "version": "4.14.0"
+        }
+    ],
+    "dev": true,
+    "dev-package-names": []
+}

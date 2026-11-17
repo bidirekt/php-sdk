@@ -75,7 +75,7 @@ final class SdkAttributesTest extends TestCase
             [['BidirektProvider', 21], ['BidirektConsumer', 22]],
             $this->namesAndLines($parsed, $finder->findInstanceOf($parsed->statements, ClassMethod::class)[1]),
         );
-        self::assertSame([], SdkAttributes::fileToMissingUseWarnings($parsed));
+        self::assertSame([], SdkAttributes::fileToMissingUseErrors($parsed));
     }
 
     public function testIgnoresAnAttributeImportedFromAnotherNamespaceSilently(): void
@@ -103,10 +103,10 @@ final class SdkAttributesTest extends TestCase
         foreach ((new NodeFinder())->findInstanceOf($parsed->statements, Property::class) as $property) {
             self::assertSame([], SdkAttributes::elementToSdkAttributes($property, $parsed));
         }
-        self::assertSame([], SdkAttributes::fileToMissingUseWarnings($parsed));
+        self::assertSame([], SdkAttributes::fileToMissingUseErrors($parsed));
     }
 
-    public function testWarnsAtTheAttributeWhenAnSdkShortNameHasNoUse(): void
+    public function testRejectsAtTheAttributeAnSdkShortNameWithoutUse(): void
     {
         $parsed = $this->parse(<<<'PHP'
             <?php
@@ -132,10 +132,10 @@ final class SdkAttributesTest extends TestCase
         self::assertEquals([
             new Diagnostic('#[BidirektField] resolves to "App\\Models\\BidirektField", so it is not read: write use Bidirekt\\PhpSdk\\BidirektField', new SourceLocation($this->file, 10)),
             new Diagnostic('#[BidirektField] resolves to "App\\Models\\bidirektField", so it is not read: write use Bidirekt\\PhpSdk\\BidirektField', new SourceLocation($this->file, 13)),
-        ], SdkAttributes::fileToMissingUseWarnings($parsed));
+        ], SdkAttributes::fileToMissingUseErrors($parsed));
     }
 
-    public function testWarnsInTheGlobalNamespaceAndOnAClosure(): void
+    public function testRejectsInTheGlobalNamespaceAndOnAClosure(): void
     {
         $parsed = $this->parse(<<<'PHP'
             <?php
@@ -145,7 +145,7 @@ final class SdkAttributesTest extends TestCase
 
         self::assertEquals([
             new Diagnostic('#[BidirektProvider] resolves to "BidirektProvider", so it is not read: write use Bidirekt\\PhpSdk\\BidirektProvider', new SourceLocation($this->file, 3)),
-        ], SdkAttributes::fileToMissingUseWarnings($parsed));
+        ], SdkAttributes::fileToMissingUseErrors($parsed));
     }
 
     public function testReadsPositionalArgumentsInTheOrderTheAttributeBindsThem(): void

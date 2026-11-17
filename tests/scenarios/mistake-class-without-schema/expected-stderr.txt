@@ -1,0 +1,2 @@
+app/routes.php:59 cannot translate class "StatusChange": add #[BidirektSchema] to it
+src/Domain/StatusChange.php:13 warning: #[BidirektField] is in class "StatusChange", which is neither a schema nor the parent of one, so it is not read: add #[BidirektSchema] to the class

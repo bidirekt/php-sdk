@@ -1,0 +1,34 @@
+{
+    "name": "acme/storefront",
+    "description": "The shop window of the pet store, a client of its API",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.0",
+        "guzzlehttp/guzzle": "^7.9"
+    },
+    "require-dev": {
+        "bidirekt/php-sdk": "dev-main"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../../..",
+            "options": {
+                "symlink": false,
+                "reference": "none",
+                "versions": {
+                    "bidirekt/php-sdk": "dev-main"
+                }
+            }
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Storefront\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

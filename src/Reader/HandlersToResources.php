@@ -93,7 +93,7 @@ final class HandlersToResources
     public static function statusToNumberError(string $status, SourceLocation $location): ?Diagnostic
     {
         if (preg_match('/^[0-9]+$/', $status) !== 1) {
-            return new Diagnostic(sprintf('response status "%s" must be a number', $status), $location);
+            return new Diagnostic(sprintf('response status "%s" must be a number: write the status code, as 200', $status), $location);
         }
         if ((string) (int) $status !== $status) {
             return new Diagnostic(sprintf('response status "%s" must be written as %d', $status, (int) $status), $location);

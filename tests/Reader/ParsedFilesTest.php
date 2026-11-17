@@ -53,7 +53,7 @@ final class ParsedFilesTest extends TestCase
 
         $error = $files->pathToSummary($this->directory . '/broken.php');
 
-        self::assertEquals(new Diagnostic('syntax error: unexpected EOF: fix the code so PHP can parse it', new SourceLocation($this->directory . '/broken.php', 4)), $error);
+        self::assertEquals(new Diagnostic('syntax error: unexpected end of file: fix the code so PHP can parse it', new SourceLocation($this->directory . '/broken.php', 4)), $error);
         self::assertSame($error, $files->pathToSummary($this->directory . '/broken.php'));
     }
 

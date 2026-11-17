@@ -1,0 +1,11 @@
+--- a/src/Pet.php
++++ b/src/Pet.php
+@@ -12,7 +12,7 @@
+ {
+     public function __construct(
+         #[BidirektField] public int $id,
+-        #[BidirektField] public string $name,
++        #[BidirektField] public string $nickname,
+         #[BidirektField] public PetStatus $status,
+         #[BidirektField(description: 'ISO 8601 date, like 2024-05-17')] public ?string $birthDate,
+     ) {

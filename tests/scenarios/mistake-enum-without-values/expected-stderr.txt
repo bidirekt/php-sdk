@@ -1,0 +1,1 @@
+src/Domain/StatusChange.php:14 cannot translate enum "PetStatus", which has no values: give its cases string values

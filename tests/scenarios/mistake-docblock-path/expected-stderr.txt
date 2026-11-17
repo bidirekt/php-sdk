@@ -1,0 +1,1 @@
+app/routes.php:57 "*/" in "/pets/*/status" ends the docblock: write "/pets/*\/status"

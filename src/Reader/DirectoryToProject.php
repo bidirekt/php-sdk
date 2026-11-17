@@ -43,7 +43,19 @@ final class DirectoryToProject
             $devPaths[] = RelativePathToAbsolute::relativePathToAbsolute($directory, $path);
         }
 
-        return new Composer(RelativePathToAbsolute::relativePathToAbsolute($directory, $vendor), $devPaths);
+        $requiredPackages = [];
+        foreach (['require', 'require-dev'] as $key) {
+            if (!is_array($json[$key] ?? null)) {
+                continue;
+            }
+            foreach (array_keys($json[$key]) as $package) {
+                if (str_contains((string) $package, '/')) {
+                    $requiredPackages[] = (string) $package;
+                }
+            }
+        }
+
+        return new Composer(RelativePathToAbsolute::relativePathToAbsolute($directory, $vendor), $devPaths, $requiredPackages);
     }
 
     /**

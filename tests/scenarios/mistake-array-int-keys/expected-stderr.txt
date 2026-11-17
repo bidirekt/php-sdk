@@ -1,0 +1,1 @@
+src/Domain/Pet.php:24 cannot translate "array<int, string>": write list<string> for a list or array<string, string> for a map

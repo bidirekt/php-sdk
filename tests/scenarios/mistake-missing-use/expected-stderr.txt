@@ -1,0 +1,7 @@
+src/Domain/Pet.php:17 #[BidirektField] resolves to "App\Domain\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField
+src/Domain/Pet.php:18 #[BidirektField] resolves to "App\Domain\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField
+src/Domain/Pet.php:19 #[BidirektField] resolves to "App\Domain\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField
+src/Domain/Pet.php:20 #[BidirektField] resolves to "App\Domain\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField
+src/Domain/Pet.php:21 #[BidirektField] resolves to "App\Domain\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField
+src/Domain/Pet.php:22 #[BidirektField] resolves to "App\Domain\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField
+src/Domain/Pet.php:23 #[BidirektField] resolves to "App\Domain\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField

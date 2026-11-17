@@ -59,10 +59,7 @@ final class PhpFileToParsed
         try {
             return array_values($this->parser->parse($code) ?? []);
         } catch (Error $error) {
-            return new Diagnostic(
-                'syntax error: ' . self::parserMessageToText($error->getRawMessage()) . ': fix the code so PHP can parse it',
-                new SourceLocation($path, max(1, $error->getStartLine())),
-            );
+            return ParserErrorToDiagnostic::errorToDiagnostic($error, $path, $code);
         } catch (RangeException) {
             // PHP-Parser throws it for a token of a PHP version newer than it reads.
             return new Diagnostic(
@@ -80,15 +77,5 @@ final class PhpFileToParsed
         }
 
         return $code;
-    }
-
-    private static function parserMessageToText(string $message): string
-    {
-        $text = rtrim($message, '.');
-        if (str_starts_with($text, 'Syntax error, ')) {
-            $text = substr($text, strlen('Syntax error, '));
-        }
-
-        return lcfirst($text);
     }
 }

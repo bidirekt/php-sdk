@@ -7,3 +7,4 @@ parameters:
         - tests
     excludePaths:
         - tests/fixtures/*
+        - tests/scenarios/*

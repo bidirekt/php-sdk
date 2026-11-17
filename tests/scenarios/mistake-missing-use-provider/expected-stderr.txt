@@ -1,0 +1,1 @@
+app/routes.php:58 #[BidirektProvider] resolves to "BidirektProvider", so it is not read: write use Bidirekt\PhpSdk\BidirektProvider

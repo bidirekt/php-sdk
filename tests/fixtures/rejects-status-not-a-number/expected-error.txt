@@ -1,3 +1,3 @@
-pets.php:17 response status "2xx" must be a number
-pets.php:20 response status "-200" must be a number
-pets.php:20 response status "true" must be a number
+pets.php:17 response status "2xx" must be a number: write the status code, as 200
+pets.php:20 response status "-200" must be a number: write the status code, as 200
+pets.php:20 response status "true" must be a number: write the status code, as 200

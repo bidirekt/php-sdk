@@ -1,0 +1,39 @@
+{
+    "name": "acme/platform",
+    "description": "The pet store platform: the public API, the back office and the code they share",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.0",
+        "fig/http-message-util": "^1.1",
+        "slim/psr7": "^1.7",
+        "slim/slim": "^4.14",
+        "spatie/data-transfer-object": "^3.9"
+    },
+    "require-dev": {
+        "bidirekt/php-sdk": "dev-main"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../..",
+            "options": {
+                "symlink": false,
+                "reference": "none",
+                "versions": {
+                    "bidirekt/php-sdk": "dev-main"
+                }
+            }
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Acme\\Admin\\": "apps/admin/src/",
+            "Acme\\Api\\": "apps/api/src/",
+            "Acme\\Shared\\": "libs/shared/src/"
+        }
+    },
+    "config": {
+        "sort-packages": true
+    }
+}

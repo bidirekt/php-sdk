@@ -32,11 +32,59 @@ final class ClassIndex
 
     /**
      * @param string|null $vendorDirectory the Composer project's vendor folder, null without a `composer.json`
+     * @param list<string> $requiredPackages the packages its `composer.json` requires
      */
     public function __construct(
         private ParsedFiles $files,
         private ?string $vendorDirectory,
+        private array $requiredPackages = [],
     ) {}
+
+    /**
+     * How to fix a class found nowhere: install the required packages Composer has not installed, one of which
+     * may declare it, or else declare it.
+     */
+    public function missingClassFix(): string
+    {
+        $installed = $this->installedPackages();
+        $missing = [];
+        foreach ($this->requiredPackages as $package) {
+            if ($installed !== null && !isset($installed[strtolower($package)])) {
+                $missing[] = sprintf('"%s"', $package);
+            }
+        }
+        if ($missing === []) {
+            return 'declare it in the project or require its package with composer';
+        }
+
+        return sprintf('run composer install to install %s, which composer.json requires', implode(', ', $missing));
+    }
+
+    /**
+     * @return array<string, true>|null the packages of the vendor folder's `composer/installed.json`, in lowercase, null without one
+     */
+    private function installedPackages(): ?array
+    {
+        if ($this->vendorDirectory === null) {
+            return null;
+        }
+        $json = json_decode((string) @file_get_contents($this->vendorDirectory . '/composer/installed.json'), true);
+        if (!is_array($json)) {
+            return null;
+        }
+        $packages = $json['packages'] ?? $json;
+        if (!is_array($packages)) {
+            return null;
+        }
+        $installed = [];
+        foreach ($packages as $package) {
+            if (is_array($package) && is_string($package['name'] ?? null)) {
+                $installed[strtolower($package['name'])] = true;
+            }
+        }
+
+        return $installed;
+    }
 
     public function addFileSummary(FileSummary $file): void
     {

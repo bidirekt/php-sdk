@@ -109,7 +109,7 @@ final class ClassIndexTest extends TestCase
         self::assertNull($classes->lookup('Acme\\Missing', $usedAt)->declaration);
         self::assertSame([], $classes->lookup('Acme\\Missing', $usedAt)->errors);
         self::assertEquals(
-            [new Diagnostic("syntax error: unexpected EOF: fix the code so PHP can parse it", new SourceLocation($this->root . '/vendor/acme/zoo/src/Broken.php', 5))],
+            [new Diagnostic("syntax error: unexpected end of file: fix the code so PHP can parse it", new SourceLocation($this->root . '/vendor/acme/zoo/src/Broken.php', 5))],
             $classes->lookup('Acme\\Broken', $usedAt)->errors,
         );
     }

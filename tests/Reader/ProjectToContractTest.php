@@ -51,20 +51,20 @@ final class ProjectToContractTest extends TestCase
         $this->write('helper.php', "<?php\n\nfinal class Helper\n{\n    public string \$broken =;\n}\n");
 
         self::assertEquals(new ReadResult(new Contract(), [
-            new Diagnostic('syntax error: unexpected EOF: fix the code so PHP can parse it', new SourceLocation($this->root . '/owner.php', 7)),
-            new Diagnostic("syntax error: unexpected ';': fix the code so PHP can parse it", new SourceLocation($this->root . '/pet.php', 6)),
+            new Diagnostic('syntax error: unexpected end of file: fix the code so PHP can parse it', new SourceLocation($this->root . '/owner.php', 7)),
+            new Diagnostic('syntax error: unexpected token ";": fix the code so PHP can parse it', new SourceLocation($this->root . '/pet.php', 6)),
         ], []), $this->read());
     }
 
-    public function testWarnsOfAnSdkAttributeWithoutUseInTheProjectFilesOnly(): void
+    public function testRejectsAnSdkAttributeWithoutUseInTheProjectFilesOnly(): void
     {
         $this->write('composer.json', '{"autoload-dev": {"psr-4": {"App\\\\Tests\\\\": "tests/"}}}');
         $this->write('src/Pet.php', "<?php\nnamespace App;\n\nfinal class Pet\n{\n    #[BidirektField]\n    public int \$petId;\n}\n");
         $this->write('tests/PetTest.php', "<?php\nnamespace App\\Tests;\n\nfinal class PetTest\n{\n    #[BidirektField]\n    public int \$petId;\n}\n");
 
-        self::assertEquals(new ReadResult(new Contract(), [], [
+        self::assertEquals(new ReadResult(new Contract(), [
             new Diagnostic('#[BidirektField] resolves to "App\\BidirektField", so it is not read: write use Bidirekt\\PhpSdk\\BidirektField', new SourceLocation($this->root . '/src/Pet.php', 6)),
-        ]), $this->read());
+        ], []), $this->read());
     }
 
     public function testReadsAClassFromAFileThatDoesNotMentionTheSdkWhenItIsLookedUp(): void

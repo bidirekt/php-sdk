@@ -112,7 +112,7 @@ final class TypeToSchemaNode
         }
 
         return [new Diagnostic(
-            sprintf('cannot find class "%s": declare it in the project or require its package with composer', $class),
+            sprintf('cannot find class "%s": %s', $class, $this->classes->missingClassFix()),
             $location,
         )];
     }
