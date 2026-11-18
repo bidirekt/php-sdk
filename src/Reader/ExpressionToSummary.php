@@ -86,7 +86,12 @@ final class ExpressionToSummary
             return new NewFieldSummary($location, self::argumentsToSummaries($expression->args, $file));
         }
         if ($expression instanceof New_ && $expression->class instanceof Name && SdkAttributes::nameToUnimportedClass($expression->class, $expression) === BidirektField::class) {
-            return new UnimportedFieldSummary($location, $expression->class->toString());
+            return new UnimportedFieldSummary(
+                $location,
+                SdkAttributes::unimportedNameToWritten($expression->class, BidirektField::class),
+                $expression->class->toString(),
+                SdkAttributes::unimportedNameToFix($expression->class, BidirektField::class),
+            );
         }
 
         return new UnreadableSummary($location, $file->textOf($expression));

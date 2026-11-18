@@ -1,0 +1,4 @@
+pets.php:5 #[Bidirekt\PhpSdk\BidirektSchema] resolves to "App\Bidirekt\PhpSdk\BidirektSchema", so it is not read: write \Bidirekt\PhpSdk\BidirektSchema
+pets.php:8 #[PhpSdk\BidirektField] resolves to "App\PhpSdk\BidirektField", so it is not read: write \Bidirekt\PhpSdk\BidirektField
+pets.php:14 #[Bidirekt\PhpSdk\BidirektProvider] resolves to "App\Bidirekt\PhpSdk\BidirektProvider", so it is not read: write \Bidirekt\PhpSdk\BidirektProvider
+pets.php:19 new Bidirekt\PhpSdk\BidirektField(…) resolves to "App\Bidirekt\PhpSdk\BidirektField", so it is not read: write \Bidirekt\PhpSdk\BidirektField

@@ -101,8 +101,8 @@ final class SdkAttributes
     }
 
     /**
-     * An error for each attribute written with an SDK attribute's short name and no `use` for it, which
-     * PHP resolves to the current namespace. One imported from another namespace is that one, and is
+     * An error for each attribute written with an SDK attribute's name, short or qualified, that PHP
+     * resolves to the current namespace. One imported from another namespace is that one, and is
      * ignored.
      *
      * @return list<Diagnostic>
@@ -116,7 +116,7 @@ final class SdkAttributes
                 continue;
             }
             $errors[] = new Diagnostic(
-                sprintf('#[%s] resolves to "%s", so it is not read: write use %s', SchemaNaming::classToShortName($class), $attribute->name->toString(), $class),
+                sprintf('#[%s] resolves to "%s", so it is not read: write %s', self::unimportedNameToWritten($attribute->name, $class), $attribute->name->toString(), self::unimportedNameToFix($attribute->name, $class)),
                 $file->locationOf($attribute),
             );
         }
@@ -147,24 +147,48 @@ final class SdkAttributes
     }
 
     /**
-     * The SDK class a short name was written for, when it has no `use` and PHP resolves it to the
-     * current namespace instead, null for any other name.
+     * The SDK class a name was written for, when PHP resolves it to the current namespace instead: a
+     * short name without its `use`, or a qualified name without the leading `\`, like
+     * `Bidirekt\PhpSdk\BidirektField` inside `namespace App`. Null for any other name.
      *
      * @param Node $node the node the name is written in
      */
     public static function nameToUnimportedClass(Name $name, Node $node): ?string
     {
         $original = $name->getAttribute('originalName');
-        if (!$original instanceof Name || !$original->isUnqualified() || in_array($name->toLowerString(), array_map('strtolower', self::CLASSES), true)) {
+        if (!$original instanceof Name || $original->isFullyQualified() || in_array($name->toLowerString(), array_map('strtolower', self::CLASSES), true)) {
             return null;
         }
-        $class = self::shortNameToClass($original->toString());
+        $class = self::writtenNameToClass($original);
         $unimported = Name::concat(NameContextVisitor::nodeToNameContext($node)->getNamespace(), $original);
         if ($class === null || $unimported === null || $unimported->toLowerString() !== $name->toLowerString()) {
             return null;
         }
 
         return $class;
+    }
+
+    /**
+     * How to write a name nameToUnimportedClass() found: a short name takes its `use`, a qualified one
+     * the leading `\`.
+     */
+    public static function unimportedNameToFix(Name $name, string $class): string
+    {
+        $original = $name->getAttribute('originalName');
+
+        return $original instanceof Name && $original->isQualified() ? '\\' . $class : 'use ' . $class;
+    }
+
+    /**
+     * A name nameToUnimportedClass() found, spelled as the SDK class: `bidirektField` reads
+     * `BidirektField`, `phpsdk\bidirektfield` reads `PhpSdk\BidirektField`.
+     */
+    public static function unimportedNameToWritten(Name $name, string $class): string
+    {
+        $original = $name->getAttribute('originalName');
+        $segments = $original instanceof Name ? count($original->getParts()) : 1;
+
+        return implode('\\', array_slice(explode('\\', $class), -$segments));
     }
 
     /**
@@ -240,10 +264,15 @@ final class SdkAttributes
         return 'this element';
     }
 
-    private static function shortNameToClass(string $shortName): ?string
+    /**
+     * The SDK class whose fully-qualified name ends with the written name, segment by segment:
+     * `BidirektField`, `PhpSdk\BidirektField` and `Bidirekt\PhpSdk\BidirektField` all name BidirektField.
+     */
+    private static function writtenNameToClass(Name $written): ?string
     {
+        $suffix = '\\' . $written->toLowerString();
         foreach (self::CLASSES as $class) {
-            if (strtolower(SchemaNaming::classToShortName($class)) === strtolower($shortName)) {
+            if (str_ends_with('\\' . strtolower($class), $suffix)) {
                 return $class;
             }
         }
