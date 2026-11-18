@@ -1,0 +1,1 @@
+src/Domain/PetStatus.php:7 enum "PetStatus" has no cases: add a case with a string value

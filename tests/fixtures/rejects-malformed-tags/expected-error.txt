@@ -1,7 +1,7 @@
 pets.php:14 cannot read "@bidirekt provides GET": write "@bidirekt provides <METHOD> <path>"
 pets.php:22 cannot read "@bidirekt consumes POST /charges": write "@bidirekt consumes <provider> <METHOD> <path>"
 pets.php:31 cannot read "@bidirekt response": write "@bidirekt response <status> [schema]"
-pets.php:32 response status "ok" must be a number
+pets.php:32 response status "ok" must be a number: write the status code, as 200
 pets.php:33 cannot read "Pet as PetCard" as a body: write "<schema>", "<schema>[]" or "<schema>[] as <name>"
 pets.php:35 response status "404" is declared more than once in this comment: keep one
 pets.php:44 "@bidirekt request" is declared more than once in this comment: keep one

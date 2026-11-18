@@ -1,0 +1,1 @@
+src/Domain/Pet.php:10 #[BidirektSchema] resolves to "App\Domain\BidirektSchema", so it is not read: write use Bidirekt\PhpSdk\BidirektSchema

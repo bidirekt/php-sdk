@@ -85,14 +85,14 @@ final class GenerateCommandTest extends TestCase
 
     public function testNamesTheProjectFolderAndPrintsTheWarningsBeforeANothingToGenerate(): void
     {
-        $this->write('apps/api/b.php', "<?php\nnamespace App;\n\nfinal class B\n{\n    #[BidirektField]\n    public int \$id;\n}\n");
-        $this->write('apps/api/a.php', "<?php\nnamespace App;\n\n#[BidirektSchema]\nfinal class A {}\n");
+        $this->write('apps/api/b.php', "<?php\nnamespace App;\n\nuse Bidirekt\\PhpSdk\\BidirektField;\n\n#[BidirektField]\nfinal class B {}\n");
+        $this->write('apps/api/a.php', "<?php\nnamespace App;\n\nuse Bidirekt\\PhpSdk\\BidirektProvider;\n\n#[BidirektProvider(method: 'GET', path: '/a', responses: [200 => null])]\nfinal class A {}\n");
 
         self::assertEquals(
             new CommandResult(
                 1,
-                "apps/api/a.php:4 warning: #[BidirektSchema] resolves to \"App\\BidirektSchema\", so it is not read: write use Bidirekt\\PhpSdk\\BidirektSchema\n"
-                . "apps/api/b.php:6 warning: #[BidirektField] resolves to \"App\\BidirektField\", so it is not read: write use Bidirekt\\PhpSdk\\BidirektField\n"
+                "apps/api/a.php:6 warning: #[BidirektProvider] is on a class, so it is not read: put it on a method, a function or a closure\n"
+                . "apps/api/b.php:6 warning: #[BidirektField] is on a class, so it is not read: put it on a property or a promoted constructor parameter\n"
                 . "no bidirekt/php-sdk annotation found in \"apps/api\": nothing to generate\n",
             ),
             GenerateCommand::runCommand(['generate', '--project', 'apps/api/'], $this->root),
@@ -107,8 +107,8 @@ final class GenerateCommandTest extends TestCase
         self::assertEquals(
             new CommandResult(
                 1,
-                "owner.php:6 syntax error: unexpected EOF: fix the code so PHP can parse it\n"
-                . "pet.php:6 syntax error: unexpected ';': fix the code so PHP can parse it\n",
+                "owner.php:6 syntax error: unexpected end of file: fix the code so PHP can parse it\n"
+                . "pet.php:6 syntax error: unexpected token \";\": fix the code so PHP can parse it\n",
             ),
             GenerateCommand::runCommand(['generate', '--check'], $this->root),
         );

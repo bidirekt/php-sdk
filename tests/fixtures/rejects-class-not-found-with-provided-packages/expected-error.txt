@@ -1,0 +1,1 @@
+src/Pet.php:15 cannot find class "App\Owner": declare it in the project or require its package with composer

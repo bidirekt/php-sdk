@@ -34,3 +34,19 @@ function createPet(): void
 function listPets(): void
 {
 }
+
+/**
+ * @bidirekt provides GET /owners
+ * @bidirekt response 200 \
+ */
+function listOwners(): void
+{
+}
+
+/**
+ * @bidirekt provides POST /owners
+ * @bidirekt request namespace\
+ */
+function createOwner(): void
+{
+}

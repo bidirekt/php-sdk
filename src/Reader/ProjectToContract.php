@@ -16,13 +16,15 @@ final class ProjectToContract
     public static function projectToContract(Project $project): ReadResult
     {
         $files = new ParsedFiles();
-        $classes = new ClassIndex($files, $project->composer?->vendorDirectory);
+        $classes = new ClassIndex($files, $project->composer);
         $summaries = [];
         $syntaxErrors = [];
         $tagErrors = [];
         $tagWarnings = [];
         $schemaTags = new SchemaTags();
         $tagHandlers = new ReadResult(new Contract(), [], []);
+        $tagBodyClasses = new TagBodyClasses();
+        $attributeErrors = [];
         $attributeWarnings = [];
         $projectFiles = ProjectToFiles::projectToFiles($project);
         foreach ($projectFiles->paths as $path) {
@@ -44,12 +46,13 @@ final class ProjectToContract
             $summaries[] = $summary;
             $classes->addFileSummary($summary);
             $schemaTags->addProjectFile($summary);
-            $fileHandlers = TagsToResources::commentsToResources($fileTagged->comments);
+            $fileHandlers = TagsToResources::commentsToResources($fileTagged->comments, $tagBodyClasses);
             array_push($tagHandlers->contract->provides, ...$fileHandlers->contract->provides);
             array_push($tagHandlers->contract->consumes, ...$fileHandlers->contract->consumes);
             array_push($tagHandlers->contract->schemas, ...$fileHandlers->contract->schemas);
             array_push($tagHandlers->errors, ...$fileHandlers->errors);
-            array_push($attributeWarnings, ...SdkAttributes::fileToMissingUseWarnings($read), ...SdkAttributes::fileToMisplacedWarnings($read));
+            array_push($attributeErrors, ...SdkAttributes::fileToMissingUseErrors($read));
+            array_push($attributeWarnings, ...SdkAttributes::fileToMisplacedWarnings($read));
         }
         if ($syntaxErrors !== []) {
             return new ReadResult(new Contract(), $syntaxErrors, $projectFiles->warnings);
@@ -67,7 +70,9 @@ final class ProjectToContract
             [...$handlers->contract->consumes, ...$tagHandlers->contract->consumes],
             [...$schemas->contract->schemas, ...$handlers->contract->schemas, ...$tagHandlers->contract->schemas, ...$schemaClasses->enumSchemas()],
         );
-        $errors = [...$tagErrors, ...$schemaTags->errors, ...$schemas->errors, ...$handlers->errors, ...$tagHandlers->errors];
+        [$classSchemas, $bodyErrors] = $tagBodyClasses->bodiesToErrors($contract->schemas, $classes, $schemaClasses);
+        array_push($contract->schemas, ...$classSchemas);
+        $errors = [...$attributeErrors, ...$tagErrors, ...$schemaTags->errors, ...$schemas->errors, ...$handlers->errors, ...$tagHandlers->errors, ...$bodyErrors];
 
         return new ReadResult($contract, $errors, $warnings);
     }

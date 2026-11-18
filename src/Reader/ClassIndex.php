@@ -31,12 +31,52 @@ final class ClassIndex
     private array $vendorFiles = [];
 
     /**
-     * @param string|null $vendorDirectory the Composer project's vendor folder, null without a `composer.json`
+     * @param Composer|null $composer the project's, null without a `composer.json`
      */
     public function __construct(
         private ParsedFiles $files,
-        private ?string $vendorDirectory,
+        private ?Composer $composer,
     ) {}
+
+    /**
+     * How to fix a class found nowhere: install the required packages Composer has not installed, one of which
+     * may declare it, or else declare it.
+     */
+    public function missingClassFix(): string
+    {
+        $missing = $this->missingPackages();
+        if ($missing === []) {
+            return 'declare it in the project or require its package with composer';
+        }
+
+        return sprintf('run composer install to install %s, which composer.json requires', implode(', ', $missing));
+    }
+
+    /**
+     * @return list<string> the required packages, quoted, that no installed package is, provides or replaces; none
+     *                      without the vendor folder's `composer/installed.json`
+     */
+    private function missingPackages(): array
+    {
+        $composer = $this->composer;
+        if ($composer === null || $composer->installedPackages === null) {
+            return [];
+        }
+        $installed = [];
+        foreach ($composer->installedPackages as $package) {
+            foreach ($package->names as $name) {
+                $installed[$name] = true;
+            }
+        }
+        $missing = [];
+        foreach ($composer->requiredPackages as $package) {
+            if (!isset($installed[strtolower($package)])) {
+                $missing[] = sprintf('"%s"', $package);
+            }
+        }
+
+        return $missing;
+    }
 
     public function addFileSummary(FileSummary $file): void
     {
@@ -71,11 +111,11 @@ final class ClassIndex
         if (count($declared) > 1) {
             return new ClassLookup(null, $this->duplicateErrors($class));
         }
-        if ($this->vendorDirectory === null || self::isBuiltIn($class, true)) {
+        if ($this->composer === null || self::isBuiltIn($class, true)) {
             return new ClassLookup(null);
         }
         if (!$this->vendorRead) {
-            $this->vendor = VendorToClassLoader::vendorToClassLoader($this->vendorDirectory);
+            $this->vendor = VendorToClassLoader::vendorToClassLoader($this->composer->vendorDirectory);
             $this->vendorRead = true;
         }
         if ($this->vendor === null) {

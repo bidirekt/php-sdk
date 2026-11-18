@@ -1,0 +1,1 @@
+app/routes.php:83 syntax error: unexpected token "}", expecting ";": fix the code so PHP can parse it

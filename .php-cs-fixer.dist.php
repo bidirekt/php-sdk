@@ -8,5 +8,6 @@ return (new PhpCsFixer\Config())
         (new PhpCsFixer\Finder())
             ->in(__DIR__)
             ->exclude('tests/fixtures')
+            ->exclude('tests/scenarios')
             ->append([__DIR__ . '/bin/php-sdk', __FILE__]),
     );

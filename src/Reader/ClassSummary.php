@@ -23,6 +23,7 @@ final class ClassSummary
      * @param list<TraitUseSummary|MemberDeclaration> $members in the order they are written
      * @param array<string, ExpressionSummary> $constants name => value, the first declared
      * @param list<EnumCaseSummary> $cases
+     * @param bool $unimportedSchema whether it has a #[BidirektSchema] without its `use`, an error of its own
      */
     public function __construct(
         public string $key,
@@ -37,6 +38,7 @@ final class ClassSummary
         public array $members,
         public array $constants,
         public array $cases,
+        public bool $unimportedSchema,
     ) {}
 
     public function caseNamed(string $name): ?EnumCaseSummary

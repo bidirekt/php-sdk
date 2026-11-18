@@ -8,9 +8,14 @@ final class Composer
 {
     /**
      * @param list<string> $devPaths absolute paths of the `autoload-dev` entries
+     * @param list<string> $requiredPackages the packages of `require` and `require-dev`, platform ones left out
+     * @param list<InstalledPackage>|null $installedPackages the packages of the vendor folder, null when it has no
+     *                                                       readable `composer/installed.json`
      */
     public function __construct(
         public string $vendorDirectory,
         public array $devPaths,
+        public array $requiredPackages = [],
+        public ?array $installedPackages = null,
     ) {}
 }

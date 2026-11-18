@@ -101,27 +101,49 @@ final class SdkAttributes
     }
 
     /**
-     * A warning for each attribute written with an SDK attribute's short name and no `use` for it, which
+     * An error for each attribute written with an SDK attribute's short name and no `use` for it, which
      * PHP resolves to the current namespace. One imported from another namespace is that one, and is
-     * not warned.
+     * ignored.
      *
      * @return list<Diagnostic>
      */
-    public static function fileToMissingUseWarnings(ParsedFile $file): array
+    public static function fileToMissingUseErrors(ParsedFile $file): array
     {
-        $warnings = [];
+        $errors = [];
         foreach ($file->nodes->attributes as $attribute) {
             $class = self::nameToUnimportedClass($attribute->name, $attribute);
             if ($class === null) {
                 continue;
             }
-            $warnings[] = new Diagnostic(
+            $errors[] = new Diagnostic(
                 sprintf('#[%s] resolves to "%s", so it is not read: write use %s', SchemaNaming::classToShortName($class), $attribute->name->toString(), $class),
                 $file->locationOf($attribute),
             );
         }
 
-        return $warnings;
+        return $errors;
+    }
+
+    /**
+     * Whether the element has the SDK attribute `$class` written without its `use`.
+     */
+    public static function hasUnimportedAttribute(Node $element, string $class): bool
+    {
+        if (!property_exists($element, 'attrGroups') || !is_array($element->attrGroups)) {
+            return false;
+        }
+        foreach ($element->attrGroups as $group) {
+            if (!$group instanceof AttributeGroup) {
+                continue;
+            }
+            foreach ($group->attrs as $attribute) {
+                if (self::nameToUnimportedClass($attribute->name, $attribute) === $class) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

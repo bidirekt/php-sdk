@@ -41,13 +41,18 @@ final class TagsToResources
     /** @var array<int, true> node ids of the elements a docblock already declared a handler on */
     private array $handled = [];
 
+    private function __construct(
+        private TagBodyClasses $bodyClasses,
+    ) {}
+
     /**
      * @param list<TaggedComment> $comments
+     * @param TagBodyClasses $bodyClasses takes the class each body's schema name resolves to
      * @return ReadResult the resources and the lists their bodies declare
      */
-    public static function commentsToResources(array $comments): ReadResult
+    public static function commentsToResources(array $comments, TagBodyClasses $bodyClasses): ReadResult
     {
-        $reader = new self();
+        $reader = new self($bodyClasses);
         $contract = new Contract();
         foreach ($comments as $comment) {
             $read = $reader->commentToDeclarations($comment);
@@ -101,10 +106,30 @@ final class TagsToResources
             return null;
         }
 
+        foreach ($bodies as $tag) {
+            $this->addBodyClass($tag, $comment->element);
+        }
         $read = $this->tagsToDeclarations($handler, $bodies) ?? new Contract();
         array_push($read->schemas, ...$this->tagsToBlockSchemas($comment->tags));
 
         return $read;
+    }
+
+    private function addBodyClass(CommentTag $tag, Node $element): void
+    {
+        $arguments = $tag->arguments;
+        if ($tag->keyword === 'response') {
+            array_shift($arguments);
+        }
+        if (preg_match(self::BODY_PATTERN, implode(' ', $arguments), $match) !== 1) {
+            return;
+        }
+        // `\` and `namespace\` alone name no class.
+        if (preg_match('/^(?:namespace)?\\\\$/i', $match[1]) === 1) {
+            return;
+        }
+        $class = NameContextVisitor::classNameToFullyQualified(NameContextVisitor::nodeToNameContext($element), $match[1]);
+        $this->bodyClasses->addBody($match[1], $class, $tag->location);
     }
 
     /**

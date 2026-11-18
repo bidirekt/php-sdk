@@ -1,0 +1,45 @@
+include:
+  - ../e2e/compose.yaml
+
+x-php: &php
+  profiles: [php]
+  environment:
+    COMPOSER_ALLOW_SUPERUSER: 1
+    COMPOSER_CACHE_DIR: /composer-cache
+    COMPOSER_NO_INTERACTION: 1
+  volumes:
+    - ../..:/sdk:ro
+    # Over the checkout's tests/scenarios: a copy keeps the path to the checkout its composer.json declares, ../../..
+    - work:/sdk/tests/scenarios
+    - .:/scenarios:ro
+    - composer-cache:/composer-cache
+
+services:
+  php-8.0:
+    <<: *php
+    build:
+      context: .
+      args:
+        PHP_IMAGE: php:8.0.30-cli-alpine
+
+  php-8.5:
+    <<: *php
+    build:
+      context: .
+      args:
+        PHP_IMAGE: php:8.5.12-cli-alpine
+
+  bidirekt:
+    image: ghcr.io/bidirekt/cli:0.2.0
+    profiles: [cli]
+    network_mode: service:broker
+    working_dir: /work
+    environment:
+      BIDIREKT_BROKER_URL: http://localhost:8080
+      BIDIREKT_API_KEY:
+    volumes:
+      - work:/work:ro
+
+volumes:
+  work:
+  composer-cache:

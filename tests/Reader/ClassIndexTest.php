@@ -109,7 +109,7 @@ final class ClassIndexTest extends TestCase
         self::assertNull($classes->lookup('Acme\\Missing', $usedAt)->declaration);
         self::assertSame([], $classes->lookup('Acme\\Missing', $usedAt)->errors);
         self::assertEquals(
-            [new Diagnostic("syntax error: unexpected EOF: fix the code so PHP can parse it", new SourceLocation($this->root . '/vendor/acme/zoo/src/Broken.php', 5))],
+            [new Diagnostic("syntax error: unexpected end of file: fix the code so PHP can parse it", new SourceLocation($this->root . '/vendor/acme/zoo/src/Broken.php', 5))],
             $classes->lookup('Acme\\Broken', $usedAt)->errors,
         );
     }
@@ -159,7 +159,7 @@ final class ClassIndexTest extends TestCase
         $project = DirectoryToProject::directoryToProject($this->root);
         self::assertInstanceOf(Project::class, $project);
         $files = new ParsedFiles();
-        $index = new ClassIndex($files, $project->composer?->vendorDirectory);
+        $index = new ClassIndex($files, $project->composer);
         foreach (ProjectToFiles::projectToFiles($project)->paths as $path) {
             $read = $files->projectFileToRead($path);
             self::assertNotInstanceOf(Diagnostic::class, $read);

@@ -84,7 +84,7 @@ final class HandlersToResourcesTest extends TestCase
     public function testRejectsAStatusThatIsNotANumber(): void
     {
         self::assertEquals(
-            new Diagnostic('response status "2xx" must be a number', new SourceLocation(self::LOCATION_FILE, 3)),
+            new Diagnostic('response status "2xx" must be a number: write the status code, as 200', new SourceLocation(self::LOCATION_FILE, 3)),
             HandlersToResources::statusToNumberError('2xx', new SourceLocation(self::LOCATION_FILE, 3)),
         );
     }

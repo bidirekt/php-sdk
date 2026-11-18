@@ -1,3 +1,5 @@
 pets.php:15 schema "Pet" is not declared: reference a schema by its name in the contract
 pets.php:23 schema "NewPet" is not declared: reference a schema by its name in the contract
 pets.php:32 schema "Puppy" is not declared: reference a schema by its name in the contract
+pets.php:40 schema "\" is not declared: reference a schema by its name in the contract
+pets.php:48 schema "namespace\" is not declared: reference a schema by its name in the contract

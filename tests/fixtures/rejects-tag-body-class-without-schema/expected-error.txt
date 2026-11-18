@@ -1,0 +1,4 @@
+routes.php:18 cannot translate class "ValidationError": add "@bidirekt schema" above it
+routes.php:19 cannot translate class "Problem": add "@bidirekt schema" above it
+routes.php:20 schema "ServerError" is not declared: reference a schema by its name in the contract
+routes.php:29 cannot translate class "ValidationError": add "@bidirekt schema" above it

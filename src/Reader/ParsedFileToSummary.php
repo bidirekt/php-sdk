@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Bidirekt\PhpSdk\Reader;
 
+use Bidirekt\PhpSdk\BidirektField;
+use Bidirekt\PhpSdk\BidirektSchema;
 use PhpParser\Node;
 use PhpParser\Node\Expr\Variable;
 use PhpParser\Node\Name;
@@ -128,6 +130,7 @@ final class ParsedFileToSummary
             $members,
             $constants,
             $cases,
+            SdkAttributes::hasUnimportedAttribute($node, BidirektSchema::class),
         );
     }
 
@@ -145,6 +148,7 @@ final class ParsedFileToSummary
             $this->nodeToAttributes($statement),
             $statement->isStatic(),
             $members,
+            SdkAttributes::hasUnimportedAttribute($statement, BidirektField::class),
         );
     }
 
@@ -177,6 +181,7 @@ final class ParsedFileToSummary
                 $this->nodeToAttributes($param),
                 false,
                 [new MemberSummary($name, $this->file->locationOf($param), $source, $mentionsSpecialClass)],
+                SdkAttributes::hasUnimportedAttribute($param, BidirektField::class),
             );
         }
 

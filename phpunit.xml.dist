@@ -9,6 +9,7 @@
         <testsuite name="php-sdk">
             <directory>tests</directory>
             <exclude>tests/fixtures</exclude>
+            <exclude>tests/scenarios</exclude>
         </testsuite>
     </testsuites>
 </phpunit>

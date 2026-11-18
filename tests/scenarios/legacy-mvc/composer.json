@@ -1,0 +1,35 @@
+{
+    "name": "acme/petstore",
+    "description": "The pet store, a PHP MVC application without a framework",
+    "type": "project",
+    "license": "proprietary",
+    "require": {
+        "php": "^8.0",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "bidirekt/php-sdk": "dev-main"
+    },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../..",
+            "options": {
+                "symlink": false,
+                "reference": "none",
+                "versions": {
+                    "bidirekt/php-sdk": "dev-main"
+                }
+            }
+        }
+    ],
+    "autoload": {
+        "classmap": [
+            "controllers/",
+            "lib/"
+        ]
+    },
+    "config": {
+        "sort-packages": true
+    }
+}
