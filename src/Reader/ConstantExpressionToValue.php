@@ -173,7 +173,7 @@ final class ConstantExpressionToValue
         }
         if ($expression instanceof UnimportedFieldSummary) {
             return [new Diagnostic(
-                sprintf('new BidirektField(…) resolves to "%s", so it is not read: write use %s', $expression->class, BidirektField::class),
+                sprintf('new %s(…) resolves to "%s", so it is not read: write %s', $expression->written, $expression->class, $expression->fix),
                 $expression->location,
             )];
         }
