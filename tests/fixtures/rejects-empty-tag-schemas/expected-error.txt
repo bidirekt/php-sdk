@@ -1,0 +1,2 @@
+pet.php:4 schema "Pet" has no field: annotate at least one field with "@bidirekt field"
+pet.php:10 schema "Owner" has no field: annotate at least one field with "@bidirekt field"

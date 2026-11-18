@@ -1,0 +1,2 @@
+levels.php:3 "@bidirekt schema" is above enum "Level", whose values are not strings: give its cases string values
+levels.php:10 "@bidirekt schema" is above enum "Blank", which has no values: give its cases string values

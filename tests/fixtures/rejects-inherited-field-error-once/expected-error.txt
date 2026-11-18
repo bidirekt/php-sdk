@@ -1,0 +1,5 @@
+pets.php:11 schema "Ownr" is not declared: reference a schema by its name in the contract
+pets.php:14 field "kind" is declared more than once in schema "Dog": give each field a distinct name
+pets.php:14 field "kind" is declared more than once in schema "Cat": give each field a distinct name
+pets.php:17 field "kind" is declared more than once in schema "Dog": give each field a distinct name
+pets.php:17 field "kind" is declared more than once in schema "Cat": give each field a distinct name

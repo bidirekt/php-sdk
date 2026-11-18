@@ -3,8 +3,41 @@
 
 declare(strict_types=1);
 
-require $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+use Bidirekt\PhpSdk\Command\GenerateCommand;
+use Bidirekt\PhpSdk\Reader\ParsedFiles;
+use Bidirekt\PhpSdk\Reader\VendorToClassLoader;
+use Composer\Autoload\ClassLoader;
 
-fwrite(STDERR, "Usage: php-sdk generate [--check] [--project <dir>] [--out <file>]\n");
+// The project is never loaded: vendor/autoload.php would run the `autoload.files` of the project and its
+// packages, so only Composer's class maps, which just return arrays, are loaded to find the SDK's classes.
+/** @var string $autoloadPath */
+$autoloadPath = $_composer_autoload_path ?? __DIR__ . '/../vendor/autoload.php';
+$vendorDirectory = dirname($autoloadPath);
+if (!class_exists(ClassLoader::class, false)) {
+    require $vendorDirectory . '/composer/ClassLoader.php';
+}
+require_once __DIR__ . '/../src/Reader/VendorToClassLoader.php';
+$loader = VendorToClassLoader::mapsToClassLoader($vendorDirectory);
+if (is_string($loader)) {
+    fwrite(STDERR, sprintf("%s:1 cannot read the Composer autoload map: run composer install again\n", $loader));
 
-exit(1);
+    exit(1);
+}
+$loader->register();
+// Parsing a file takes about 40 times its size, so one generated file (a container, a baseline) of a few MB
+// outgrows PHP's default 128M; Composer raises the limit the same way.
+if (ParsedFiles::memoryLimitToBytes((string) ini_get('memory_limit')) < 1536 * 1024 ** 2) {
+    ini_set('memory_limit', '1536M');
+}
+if (extension_loaded('xdebug')) {
+    // PHP-Parser reads a nested expression by recursion, which Xdebug stops at 512 calls by default.
+    ini_set('xdebug.max_nesting_level', '-1');
+}
+
+$result = GenerateCommand::runCommand(
+    array_values(array_filter(array_slice((array) ($_SERVER['argv'] ?? []), 1), 'is_string')),
+    (string) getcwd(),
+);
+fwrite(STDERR, $result->stderr);
+
+exit($result->exitCode);

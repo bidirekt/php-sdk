@@ -1,0 +1,8 @@
+pets.php:4 cannot read "@bidirekt provides GET "/pets/by name"": remove the quotes, only description="<text>" takes them
+pets.php:11 cannot read "@bidirekt schema name="Pet Status"": remove the quotes, only description="<text>" takes them
+pets.php:17 cannot read "@bidirekt schema name="Size"": remove the quotes, only description="<text>" takes them
+pets.php:24 cannot read "@bidirekt provides GET "/pets"": remove the quotes, only description="<text>" takes them
+pets.php:32 cannot read "@bidirekt consumes "payments_api" GET /charges": remove the quotes, only description="<text>" takes them
+pets.php:41 cannot read "@bidirekt request "Status"": remove the quotes, only description="<text>" takes them
+pets.php:42 cannot read "@bidirekt response 201 "Status"": remove the quotes, only description="<text>" takes them
+pets.php:43 cannot read "@bidirekt response 200 Status[] as "Statuses"": remove the quotes, only description="<text>" takes them

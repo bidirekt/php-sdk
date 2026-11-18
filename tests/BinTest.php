@@ -24,4 +24,95 @@ final class BinTest extends TestCase
         );
         self::assertSame(1, proc_close($process));
     }
+
+    public function testRaisesALowMemoryLimitToParseOneBigGeneratedFile(): void
+    {
+        $home = sys_get_temp_dir() . '/php-sdk-bin-' . bin2hex(random_bytes(6));
+        $project = $home . '/project';
+        mkdir($project, 0777, true);
+        $methods = '';
+        for ($i = 0; $i < 2000; ++$i) {
+            $methods .= "    protected function getService{$i}()\n    {\n        return \$this->services['app.service_{$i}'] = new \\App\\Service{$i}(\$this->get('logger'), ['key' => 'value_{$i}', 'limit' => {$i}]);\n    }\n\n";
+        }
+        // About 400KB, which takes more than 32M to parse; the import makes generate parse it.
+        file_put_contents($project . '/Container.php', "<?php\n\nnamespace Cache;\n\nuse Bidirekt\\PhpSdk\\BidirektSchema;\n\nfinal class Container\n{\n" . $methods . "}\n");
+        file_put_contents($project . '/Pet.php', <<<'PHP'
+            <?php
+
+            #[Bidirekt\PhpSdk\BidirektSchema]
+            final class Pet
+            {
+                #[Bidirekt\PhpSdk\BidirektField]
+                public string $name;
+            }
+            PHP);
+        $process = proc_open(
+            [PHP_BINARY, '-d', 'memory_limit=32M', __DIR__ . '/../bin/php-sdk', 'generate'],
+            [1 => ['file', $project . '/stdout.txt', 'w'], 2 => ['file', $project . '/stderr.txt', 'w']],
+            $pipes,
+            $project,
+            // The project's parent folder is its home folder, so it never reads a composer.json above it.
+            ['HOME' => (string) realpath($home)] + getenv(),
+        );
+        self::assertIsResource($process);
+
+        $exitCode = proc_close($process);
+        $output = file_get_contents($project . '/stdout.txt') . file_get_contents($project . '/stderr.txt');
+        $generated = @file_get_contents($project . '/contracts/generated.yaml');
+        foreach (['Container.php', 'Pet.php', 'stdout.txt', 'stderr.txt', 'contracts/generated.yaml'] as $file) {
+            @unlink($project . '/' . $file);
+        }
+        @rmdir($project . '/contracts');
+        rmdir($project);
+        rmdir($home);
+
+        self::assertSame('', $output);
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString("  Pet:\n", (string) $generated);
+    }
+
+    public function testReadsAnExpressionNestedDeeperThanXdebugAllowsByDefault(): void
+    {
+        if (!extension_loaded('xdebug')) {
+            self::markTestSkipped('Xdebug is not loaded');
+        }
+        $home = sys_get_temp_dir() . '/php-sdk-bin-' . bin2hex(random_bytes(6));
+        $project = $home . '/project';
+        mkdir($project, 0777, true);
+        // The import makes generate parse the file.
+        file_put_contents($project . '/deep.php', "<?php\n\nuse Bidirekt\\PhpSdk\\BidirektSchema;\n\n\$sum = " . str_repeat('(', 600) . '1' . str_repeat(' + 1)', 600) . ";\n");
+        file_put_contents($project . '/Pet.php', <<<'PHP'
+            <?php
+
+            #[Bidirekt\PhpSdk\BidirektSchema]
+            final class Pet
+            {
+                #[Bidirekt\PhpSdk\BidirektField]
+                public string $name;
+            }
+            PHP);
+        $process = proc_open(
+            [PHP_BINARY, '-d', 'xdebug.mode=develop', '-d', 'xdebug.max_nesting_level=512', __DIR__ . '/../bin/php-sdk', 'generate'],
+            [1 => ['file', $project . '/stdout.txt', 'w'], 2 => ['file', $project . '/stderr.txt', 'w']],
+            $pipes,
+            $project,
+            // The project's parent folder is its home folder, so it never reads a composer.json above it.
+            ['HOME' => (string) realpath($home)] + getenv(),
+        );
+        self::assertIsResource($process);
+
+        $exitCode = proc_close($process);
+        $output = file_get_contents($project . '/stdout.txt') . file_get_contents($project . '/stderr.txt');
+        $generated = @file_get_contents($project . '/contracts/generated.yaml');
+        foreach (['deep.php', 'Pet.php', 'stdout.txt', 'stderr.txt', 'contracts/generated.yaml'] as $file) {
+            @unlink($project . '/' . $file);
+        }
+        @rmdir($project . '/contracts');
+        rmdir($project);
+        rmdir($home);
+
+        self::assertSame('', $output);
+        self::assertSame(0, $exitCode);
+        self::assertStringContainsString("  Pet:\n", (string) $generated);
+    }
 }

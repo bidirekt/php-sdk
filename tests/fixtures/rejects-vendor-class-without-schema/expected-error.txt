@@ -1,0 +1,2 @@
+src/Pet.php:13 cannot translate "Carbon" to a contract type: declare it with #[BidirektField(type: …)]
+src/Pet.php:16 cannot translate "Carbon" to a contract type: declare it with "@bidirekt field type=<type>"

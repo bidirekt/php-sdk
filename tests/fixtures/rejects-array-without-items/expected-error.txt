@@ -1,0 +1,1 @@
+pet.php:10 cannot translate "array" without the type of its items: write @var list<T> or array<string, T> in the docblock above the property and its attributes, or declare it with #[BidirektField(type: 'array', items: …)]

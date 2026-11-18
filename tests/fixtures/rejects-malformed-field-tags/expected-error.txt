@@ -1,0 +1,25 @@
+pets.php:3 cannot read "Pet" in "@bidirekt schema": write "name=<name>"
+pets.php:8 cannot name an anonymous class: declare it with "@bidirekt schema name=<name>"
+pets.php:16 cannot read "kind=integer" in "@bidirekt field": write "<key>=<value>" with key type, items, values, name, optional, nullable, description or union
+pets.php:19 cannot read "integer" in "@bidirekt field": write "<key>=<value>" with key type, items, values, name, optional, nullable, description or union
+pets.php:22 cannot read "type=map<integer" in "@bidirekt field": write "type=" followed by string, integer, float, number, boolean, a schema name, array or map
+pets.php:25 cannot read "optional=yes" in "@bidirekt field": write "optional=true" or "optional=false"
+pets.php:28 cannot read "nullable=1" in "@bidirekt field": write "nullable=true" or "nullable=false"
+pets.php:31 cannot read "name=" in "@bidirekt field": write "name=<name>"
+pets.php:34 cannot read "description=""" in "@bidirekt field": write description="<text>"
+pets.php:37 cannot read "union=card" in "@bidirekt field": write "union={<key>: <schema>, ...}"
+pets.php:40 cannot read "union={card: CardPayment, card: PixPayment}" in "@bidirekt field": write "union={<key>: <schema>, ...}"
+pets.php:43 "name=" is declared more than once in "@bidirekt field": keep one
+pets.php:46 declare either "type=" or "union=" in "@bidirekt field", not both
+pets.php:51 "@bidirekt field" is declared more than once in this comment: keep one
+pets.php:57 schema "Card" is not declared: reference a schema by its name in the contract
+pets.php:60 cannot read the type of "notes": write its type or declare it with "@bidirekt field type=<type>"
+pets.php:62 cannot read "type=Pet[]" in "@bidirekt field": write type=array items=Pet
+pets.php:65 cannot read "type=map<string>" in "@bidirekt field": write type=map values=string
+pets.php:68 "items=" is declared without type=array in "@bidirekt field": write type=array or remove "items="
+pets.php:71 "items=" is declared without type=array in "@bidirekt field": write type=array or remove "items="
+pets.php:74 type=array needs "items=" in "@bidirekt field": write the type of its items, as in items=Pet
+pets.php:77 type=map needs "values=" in "@bidirekt field": write the type of its values, as in values=Pet
+pets.php:80 cannot read "items=Pet[]" in "@bidirekt field": write "items=" followed by string, integer, float, number, boolean or a schema name
+pets.php:83 cannot read "values=array" in "@bidirekt field": write "values=" followed by string, integer, float, number, boolean or a schema name
+pets.php:87 cannot translate "array" without the type of its items: write @var list<T> or array<string, T> in the docblock above the property and its attributes, or declare it with "@bidirekt field type=array items=<type>"

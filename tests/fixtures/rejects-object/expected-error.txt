@@ -1,0 +1,1 @@
+pet.php:10 cannot translate "object" to a contract type: declare it with #[BidirektField(type: …)]

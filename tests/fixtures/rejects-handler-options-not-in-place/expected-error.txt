@@ -1,0 +1,5 @@
+pets.php:19 "LIST_METHOD" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value
+pets.php:22 "path" must be a string: write a string or a class constant that holds one
+pets.php:25 "responses" must be an array: write [200 => Pet::class]
+pets.php:28 response status "gone" must be a number
+pets.php:34 #[BidirektConsumer] must declare "provider"

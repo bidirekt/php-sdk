@@ -1,0 +1,3 @@
+pets.php:13 warning: #[BidirektProvider] is on a property, so it is not read: put it on a method, a function or a closure
+pets.php:19 warning: #[BidirektField] is on a method, so it is not read: put it on a property or a promoted constructor parameter
+pets.php:22 warning: #[BidirektSchema] is on a constant, so it is not read: put it on a class, an enum, a method or a function

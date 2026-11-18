@@ -1,0 +1,2 @@
+pet.php:11 cannot translate "array<int, string>": write list<string> for a list or array<string, string> for a map
+pet.php:15 cannot translate "array<string>": write list<string> for a list or array<string, string> for a map

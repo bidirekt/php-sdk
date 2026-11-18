@@ -3,6 +3,7 @@ parameters:
     phpVersion: 80000
     paths:
         - bin/php-sdk
+        - src
         - tests
     excludePaths:
         - tests/fixtures/*

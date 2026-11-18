@@ -1,0 +1,4 @@
+typos.php:4 warning: "@Bidirekt" is not a @bidirekt tag: write "@bidirekt <keyword>"
+typos.php:5 warning: "@BIDIREKT" is not a @bidirekt tag: write "@bidirekt <keyword>"
+typos.php:10 warning: "@bidirektfield" is not a @bidirekt tag: write "@bidirekt <keyword>"
+typos.php:11 warning: "@bidirekt:" is not a @bidirekt tag: write "@bidirekt <keyword>"

@@ -1,0 +1,1 @@
+health.php:9 new BidirektField(…) resolves to "App\BidirektField", so it is not read: write use Bidirekt\PhpSdk\BidirektField

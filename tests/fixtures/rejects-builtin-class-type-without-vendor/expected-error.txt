@@ -1,0 +1,1 @@
+src/Pet.php:15 cannot translate "\DateTimeImmutable" to a contract type: declare it with #[BidirektField(type: …)]

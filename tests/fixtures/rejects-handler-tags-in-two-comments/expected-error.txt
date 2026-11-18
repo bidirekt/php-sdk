@@ -1,0 +1,2 @@
+pets.php:5 a handler is declared more than once on this element: keep one "@bidirekt provides" or "@bidirekt consumes" comment
+pets.php:15 a handler is declared more than once on this element: keep one "@bidirekt provides" or "@bidirekt consumes" comment

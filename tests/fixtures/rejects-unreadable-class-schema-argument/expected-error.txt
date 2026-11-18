@@ -1,0 +1,2 @@
+pets.php:10 "PHP_EOL" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value
+pets.php:15 "'A ' . 'b'" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value

@@ -1,0 +1,4 @@
+pet.php:7 #[BidirektSchema] is on interface "Named", which cannot be a schema: put it on a class or on an enum with string values
+pet.php:12 #[BidirektSchema] is on trait "Timestamped", which cannot be a schema: put it on a class or on an enum with string values
+pet.php:19 #[BidirektSchema] is on enum "Level", whose values are not strings: give its cases string values
+pet.php:25 #[BidirektSchema] is on enum "Flag", which has no values: give its cases string values

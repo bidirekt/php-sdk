@@ -1,0 +1,1 @@
+pet.php:11 cannot translate array shape "array{street: string}": declare a class with #[BidirektSchema] and use it as the type

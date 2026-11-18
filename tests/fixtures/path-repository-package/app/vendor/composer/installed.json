@@ -1,0 +1,10 @@
+{
+    "packages": [
+        {
+            "name": "acme/pets",
+            "install-path": "../../../packages/pets"
+        }
+    ],
+    "dev": true,
+    "dev-package-names": []
+}

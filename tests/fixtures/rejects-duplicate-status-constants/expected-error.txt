@@ -1,0 +1,2 @@
+pets.php:28 "200" is declared more than once in "responses": keep one
+pets.php:38 "200" is declared more than once in "responses": keep one

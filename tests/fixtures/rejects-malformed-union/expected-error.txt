@@ -1,0 +1,4 @@
+pet.php:16 a member of "union" has no key: write it as '<key>' => CardPayment::class
+pet.php:19 union key "card" is written more than once: keep one
+pet.php:22 cannot read 42 as a member of "union": write a class with #[BidirektSchema], such as Pet::class, or a schema name
+pet.php:25 "union" must list its members by key: write ['card' => CardPayment::class, 'pix' => 'Pix']

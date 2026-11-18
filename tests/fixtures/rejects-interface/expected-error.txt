@@ -1,0 +1,1 @@
+pet.php:15 cannot translate interface "Address": use a class with #[BidirektSchema] as the type

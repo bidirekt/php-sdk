@@ -1,0 +1,3 @@
+pet.php:16 cannot read type "Owner[]": write type: 'array', items: 'Owner'
+pet.php:19 cannot read type "map<Owner>": write type: 'map', values: 'Owner'
+pet.php:22 cannot read type "integer[]": write type: 'array', items: 'integer'

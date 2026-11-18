@@ -1,0 +1,3 @@
+pets.php:8 warning: "@bidirekt provides" is inside an @example, so it is not read: move it above the @example
+pets.php:9 warning: "@bidirekt response" is inside an @example, so it is not read: move it above the @example
+pets.php:22 warning: "@bidirekt provides" is inside an @example, so it is not read: move it above the @example

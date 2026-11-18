@@ -1,0 +1,8 @@
+pets.php:8 field "name" in "fields" needs its type: declare "type" or "union"
+pets.php:9 declare either "type" or "union" in new BidirektField(…), not both
+pets.php:10 new BidirektField(…) in "fields" must declare "name": write the field's name as its first argument
+pets.php:11 "name" is empty: write a name
+pets.php:12 cannot read "status" as a field of "fields": write new BidirektField('<name>', type: …), as in fields: [new BidirektField('petId', type: 'integer')]
+pets.php:22 field "petId" in "fields" needs its type: declare "type" or "union"
+pets.php:23 declare either "type" or "union" in new BidirektField(…), not both
+pets.php:24 cannot read "quantity" as a field of "fields": write new BidirektField('<name>', type: …), as in fields: [new BidirektField('petId', type: 'integer')]

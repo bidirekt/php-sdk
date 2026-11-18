@@ -1,0 +1,8 @@
+pets.php:26 cannot read true as a body: write a class with #[BidirektSchema], a schema name, null, [Pet::class] or ['list' => Pet::class, 'name' => '<name>']
+pets.php:29 cannot read an array as a body: write a class with #[BidirektSchema], a schema name, null, [Pet::class] or ['list' => Pet::class, 'name' => '<name>']
+pets.php:32 cannot read an array as a body: write a class with #[BidirektSchema], a schema name, null, [Pet::class] or ['list' => Pet::class, 'name' => '<name>']
+pets.php:35 cannot translate class "Owner": add #[BidirektSchema] to it
+pets.php:38 cannot translate class "Owner": add #[BidirektSchema] to it
+pets.php:41 cannot read Rank::class as a body: write a class with #[BidirektSchema], a schema name, null, [Pet::class] or ['list' => Pet::class, 'name' => '<name>']
+pets.php:44 cannot read null as the items of a list: write a class with #[BidirektSchema], such as Pet::class, or a schema name
+pets.php:47 cannot read "" as a body: write a class with #[BidirektSchema], a schema name, null, [Pet::class] or ['list' => Pet::class, 'name' => '<name>']

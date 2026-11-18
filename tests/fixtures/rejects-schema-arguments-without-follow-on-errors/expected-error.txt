@@ -1,0 +1,3 @@
+pet.php:7 unknown argument "nmae" in #[BidirektSchema]: write name or fields
+pet.php:14 "name" is empty: write a name or leave "name" out
+pet.php:22 cannot read "nmae=Breeder" in "@bidirekt schema": write "name=<name>"

@@ -1,0 +1,4 @@
+pets.php:13 cannot read "@bidirekt field name="petName"": remove the quotes, only description="<text>" takes them
+pets.php:16 cannot read "@bidirekt field union={card: "Card"}": remove the quotes, only description="<text>" takes them
+pets.php:19 cannot read "@bidirekt field description=the"tag": remove the quotes, only description="<text>" takes them
+pets.php:26 cannot read "@bidirekt schema name="Owner"": remove the quotes, only description="<text>" takes them

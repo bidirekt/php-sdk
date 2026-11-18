@@ -1,0 +1,1 @@
+pet.php:17 cannot translate "Owner|string" to a contract type: declare it with #[BidirektField(type: …)]

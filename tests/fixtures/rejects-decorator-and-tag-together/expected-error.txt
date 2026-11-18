@@ -1,0 +1,4 @@
+pet.php:7 #[BidirektSchema] and "@bidirekt schema" are both on this class: keep one
+pet.php:11 #[BidirektField] and "@bidirekt field" are both on this property: keep one
+pet.php:16 #[BidirektField] and "@bidirekt field" are both on this property: keep one
+pet.php:22 #[BidirektSchema] and "@bidirekt schema" are both on this enum: keep one

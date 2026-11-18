@@ -1,0 +1,4 @@
+src/Pet.php:15 cannot translate "Carbon" to a contract type: declare it with #[BidirektField(type: …)]
+src/Pet.php:18 cannot translate "CarbonInterface" to a contract type: declare it with #[BidirektField(type: …)]
+src/Pet.php:22 cannot translate "Collection" to a contract type: declare it with #[BidirektField(type: …)]
+src/Pet.php:25 cannot translate "\DateTimeInterface" to a contract type: declare it with #[BidirektField(type: …)]

@@ -1,0 +1,4 @@
+pets.php:18 warning: "@bidirekt field" is in class "Shelter", which is neither a schema nor the parent of one, so it is not read: add "@bidirekt schema" above it
+pets.php:22 warning: "@bidirekt field" is in class "Shelter", which is neither a schema nor the parent of one, so it is not read: add "@bidirekt schema" above it
+pets.php:29 warning: "@bidirekt field" is in trait "Located", which is neither a schema nor the parent of one, so it is not read: use the trait in a class with "@bidirekt schema"
+pets.php:40 warning: "@bidirekt field" is above a parameter that is not promoted, so it is not read: put it above a property or a promoted constructor parameter

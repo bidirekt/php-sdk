@@ -1,0 +1,9 @@
+pets.php:29 cannot read the type of "notes": write its type or declare it with "@bidirekt field type=<type>"
+pets.php:32 cannot translate "int|string" to a contract type: declare it with "@bidirekt field type=<type>"
+pets.php:35 cannot translate union of classes "CardPayment|PixPayment": declare each member's key with "@bidirekt field union={<key>: <schema>, ...}"
+pets.php:38 cannot translate class "Address": add "@bidirekt schema" above it
+pets.php:44 cannot translate array shape "array{street: string}": declare a class with "@bidirekt schema" and use it as the type
+pets.php:47 cannot translate "DateTimeImmutable" to a contract type: declare it with "@bidirekt field type=<type>"
+pets.php:50 cannot translate interface "Located": use a class with "@bidirekt schema" as the type
+pets.php:56 cannot translate generic type "Collection<int, CardPayment>": declare a non-generic class with "@bidirekt schema" and use it as the type
+pets.php:59 cannot translate "mixed" to a contract type: declare it with "@bidirekt field type=<type>"

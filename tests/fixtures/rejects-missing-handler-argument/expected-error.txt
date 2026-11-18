@@ -1,0 +1,4 @@
+pets.php:17 #[BidirektProvider] must declare "method"
+pets.php:20 #[BidirektProvider] must declare "path"
+pets.php:23 #[BidirektProvider] must declare "responses"
+pets.php:29 #[BidirektConsumer] must declare "provider"

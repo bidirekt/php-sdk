@@ -1,0 +1,2 @@
+pet.php:7 cannot read the parent "Timestamped" of class "Dog": declare it in the project or require its package with composer
+pet.php:21 cannot read the trait "Named" of class "Cat": declare it in the project or require its package with composer

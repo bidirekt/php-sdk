@@ -1,0 +1,2 @@
+pet.php:7 #[BidirektSchema] is written more than once on class "Pet": keep one
+pet.php:14 #[BidirektSchema] is written more than once on enum "PetStatus": keep one

@@ -1,0 +1,3 @@
+pets.php:17 warning: "@bidirekt provides" is not at the start of a comment line, so it is not read: start the line with it
+pets.php:21 warning: "@bidirekt provides" is not at the start of a comment line, so it is not read: start the line with it
+pets.php:22 warning: "@bidirekt response" is not at the start of a comment line, so it is not read: start the line with it

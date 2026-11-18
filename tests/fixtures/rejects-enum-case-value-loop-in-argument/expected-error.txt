@@ -1,0 +1,1 @@
+pet.php:9 enum case "PetKind::Cat" refers to itself: give it a value

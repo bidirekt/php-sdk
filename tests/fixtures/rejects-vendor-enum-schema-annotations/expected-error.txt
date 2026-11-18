@@ -1,0 +1,5 @@
+vendor/acme/shared/src/Color.php:8 "fields" is declared on enum "Color", whose members are its case values: remove "fields"
+vendor/acme/shared/src/Flag.php:5 "@bidirekt schema" is above enum "Flag", which has no values: give its cases string values
+vendor/acme/shared/src/Level.php:8 #[BidirektSchema] is on enum "Level", whose values are not strings: give its cases string values
+vendor/acme/shared/src/Size.php:8 #[BidirektSchema] is written more than once on enum "Size": keep one
+vendor/acme/shared/src/Status.php:8 #[BidirektSchema] and "@bidirekt schema" are both on this enum: keep one

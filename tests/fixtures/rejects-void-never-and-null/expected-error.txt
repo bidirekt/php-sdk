@@ -1,0 +1,3 @@
+pet.php:11 cannot translate "void" to a contract type: declare it with #[BidirektField(type: …)]
+pet.php:15 cannot translate "never" to a contract type: declare it with #[BidirektField(type: …)]
+pet.php:19 cannot translate "null" to a contract type: declare it with #[BidirektField(type: …)]

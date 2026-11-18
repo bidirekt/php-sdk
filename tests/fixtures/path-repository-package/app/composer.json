@@ -1,0 +1,11 @@
+{
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../packages/pets"
+        }
+    ],
+    "require": {
+        "acme/pets": "*"
+    }
+}

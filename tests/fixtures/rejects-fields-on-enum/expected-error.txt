@@ -1,0 +1,1 @@
+pet.php:6 "fields" is declared on enum "PetStatus", whose members are its case values: remove "fields"

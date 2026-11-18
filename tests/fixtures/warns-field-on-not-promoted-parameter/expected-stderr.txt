@@ -1,0 +1,2 @@
+pet.php:13 warning: #[BidirektField] is on a parameter that is not promoted, so it is not read: put it on a property or a promoted constructor parameter
+pet.php:18 warning: #[BidirektField] is on a parameter that is not promoted, so it is not read: put it on a property or a promoted constructor parameter

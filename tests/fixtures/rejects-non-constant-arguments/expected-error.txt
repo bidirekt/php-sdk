@@ -1,0 +1,5 @@
+pet.php:9 "new Description('Shown on the card')" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value
+pet.php:12 "PHP_EOL" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value
+pet.php:15 "'Shown ' . 'twice'" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value
+pet.php:18 constant "Pet::MISSING" is not declared: declare it in class "Pet" or one of its parents
+pet.php:21 "strtoupper('breed')" cannot be read without running the code: write a literal, an array, X::class, a class constant or Enum::Case->value

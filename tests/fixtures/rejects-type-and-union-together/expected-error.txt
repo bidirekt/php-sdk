@@ -1,0 +1,1 @@
+pet.php:17 declare either "type" or "union" in #[BidirektField], not both
