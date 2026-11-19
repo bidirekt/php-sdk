@@ -22,5 +22,5 @@ pet_adoptions participant created
 pet-adoptions$ bidirekt validate contracts/generated.yaml --participant pet_adoptions --environment production
 Broker: http://localhost:8080 (from BIDIREKT_BROKER_URL)
 contract validation failed
-  - contracts/generated.yaml: invalid endpoint "/adoptions/{petId}" at provides rest, dynamic path segments must use *
+  - contracts/generated.yaml: invalid endpoint "/adoptions/{petId}" in provides, write "/adoptions/*" (dynamic path segments must use *)
 [1]
