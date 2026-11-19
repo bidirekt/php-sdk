@@ -30,7 +30,7 @@ services:
         PHP_IMAGE: php:8.5.12-cli-alpine
 
   bidirekt:
-    image: ghcr.io/bidirekt/cli:0.2.0
+    image: ghcr.io/bidirekt/cli:0.2.1
     profiles: [cli]
     network_mode: service:broker
     working_dir: /work
