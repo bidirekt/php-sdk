@@ -486,7 +486,7 @@ vendor/bin/php-sdk generate --check
 vendor/bin/php-sdk generate --project apps/api --out apps/api/contracts/generated.yaml
 ```
 
-- `--check` writes nothing and exits with 1 when the file on disk differs from what `generate` would write (`\r\n` counts as `\n`), or doesn't exist: `"contracts/generated.yaml" is out of date: run generate without --check`. Use it in CI.
+- `--check` writes nothing and exits with 1 when the file on disk differs from what `generate` would write (`\r\n` counts as `\n`): `"contracts/generated.yaml" is out of date: run generate without --check`, or when it doesn't exist: `"contracts/generated.yaml" does not exist: run generate without --check`. Use it in CI.
 - `--project <folder>` reads another project, and writes to its folder.
 - `--out <file>` writes to another file.
 
