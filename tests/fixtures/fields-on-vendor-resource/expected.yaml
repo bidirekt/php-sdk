@@ -17,4 +17,4 @@ schemas:
         optional: true
       status:
         type: string
-        description: available, pending or sold
+        description: available pending or sold

@@ -14,7 +14,7 @@ final class ArgumentsToFieldOptions
      */
     public static function argumentsToFieldOptions(AttributeArguments $arguments, string|Diagnostic|null $name): FieldOptions|array
     {
-        $description = $arguments->stringArgument('description');
+        $description = self::descriptionArgument($arguments);
         $optional = $arguments->boolArgument('optional');
         $nullable = $arguments->boolArgument('nullable');
         if ($name instanceof Diagnostic || $description instanceof Diagnostic || $optional instanceof Diagnostic || $nullable instanceof Diagnostic) {
@@ -25,5 +25,19 @@ final class ArgumentsToFieldOptions
         }
 
         return new FieldOptions($name, $description, $optional, $nullable);
+    }
+
+    private static function descriptionArgument(AttributeArguments $arguments): string|Diagnostic|null
+    {
+        $description = $arguments->stringArgument('description');
+        if (!is_string($description)) {
+            return $description;
+        }
+        $error = DescriptionToError::descriptionToError($description);
+        if ($error === null) {
+            return $description;
+        }
+
+        return new Diagnostic($error, $arguments->values['description']->location);
     }
 }

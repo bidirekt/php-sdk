@@ -14,7 +14,7 @@ final class Pet extends Entity
     #[BidirektField]
     public string $name;
 
-    #[BidirektField(description: 'available, pending or sold')]
+    #[BidirektField(description: 'available pending or sold')]
     public string $status = 'available';
 
     #[BidirektField]

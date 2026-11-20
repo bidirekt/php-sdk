@@ -10,7 +10,7 @@ use Bidirekt\PhpSdk\BidirektSchema;
 final class StatusChange
 {
     public function __construct(
-        #[BidirektField(description: 'available, pending or sold')] public string $status,
+        #[BidirektField(description: 'available pending or sold')] public string $status,
     ) {
     }
 }

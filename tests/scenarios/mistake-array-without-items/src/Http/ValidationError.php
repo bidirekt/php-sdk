@@ -13,7 +13,7 @@ final class ValidationError implements JsonSerializable
     public string $message;
 
     /**
-     * @bidirekt field description="The problem with each invalid field, by field name"
+     * @bidirekt field description="The problem with each invalid field by field name"
      * @var array<string, string>
      */
     public array $errors;

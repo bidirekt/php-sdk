@@ -35,7 +35,7 @@ class PetController extends Controller
     )]
     #[BidirektSchema(name: 'ValidationError', fields: [
         new BidirektField('message', type: 'string'),
-        new BidirektField('errors', type: 'map', values: ['type' => 'array', 'items' => 'string'], description: 'The messages of each invalid field, by field name'),
+        new BidirektField('errors', type: 'map', values: ['type' => 'array', 'items' => 'string'], description: 'The messages of each invalid field by field name'),
     ])]
     public function store(StorePetRequest $request): PetResource
     {

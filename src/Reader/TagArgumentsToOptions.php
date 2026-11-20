@@ -109,8 +109,14 @@ final class TagArgumentsToOptions
         if (($key === 'optional' || $key === 'nullable') && $value !== 'true' && $value !== 'false') {
             return self::unreadable($argument, $tag, $usage);
         }
-        if (($key === 'name' || $key === 'description') && $value === '') {
+        if ($key === 'name' && $value === '') {
             return self::unreadable($argument, $tag, $usage);
+        }
+        if ($key === 'description') {
+            $error = DescriptionToError::descriptionToError($value);
+            if ($error !== null) {
+                return new Diagnostic($error, $tag->location);
+            }
         }
 
         return null;

@@ -42,7 +42,7 @@ schemas:
         type: string
       status:
         type: string
-        description: available, pending or sold
+        description: available pending or sold
       nickname:
         type: string
         nullable: true

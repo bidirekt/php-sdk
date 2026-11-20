@@ -84,7 +84,7 @@ schemas:
         nullable: true
       status:
         type: string
-        description: available, pending or sold
+        description: available pending or sold
       weight:
         type: number
       vaccinated:

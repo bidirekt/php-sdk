@@ -9,12 +9,6 @@ final class Pet
     /** @bidirekt field type=integer @since 2 */
     public int $age;
 
-    /** @bidirekt field description="a @ sign" */
-    public string $sign;
-
-    /** @bidirekt field description="code `@x` here" */
-    public string $code;
-
     /**
      * @bidirekt field
      *   description="two lines" @see Owner

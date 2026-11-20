@@ -76,7 +76,7 @@ schemas:
         type: integer
       createdAt:
         type: string
-        description: When it was created, in RFC 3339
+        description: When it was created in RFC 3339
       name:
         type: string
       status:
@@ -160,4 +160,4 @@ schemas:
       type:
         type: string
         optional: true
-        description: "urn:uuid: of the failed constraint"
+        description: urn uuid of the failed constraint

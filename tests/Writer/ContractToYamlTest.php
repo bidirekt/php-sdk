@@ -121,51 +121,42 @@ final class ContractToYamlTest extends TestCase
 
         YAML;
 
-    private const FREE_TEXT_DESCRIPTIONS = [
+    private const FREE_TEXT_PROPERTIES = [
         ['plainText', 'plain text'],
         ['looksLikeYes', 'yes'],
         ['looksLikeOn', 'on'],
         ['looksLikeTrue', 'true'],
         ['looksLikeNull', 'null'],
-        ['looksLikeTildeNull', '~'],
-        ['empty', ''],
+        ['~', null],
         ['looksLikeInteger', '123'],
-        ['looksLikeFloat', '1.5'],
         ['looksLikeHexadecimal', '0x1F'],
-        ['looksLikeInfinity', '.inf'],
-        ['looksLikeDate', '2001-12-14'],
-        ['colonAndSpace', 'a: b'],
-        ['colonWithoutSpace', 'a:b'],
-        ['spaceAndHash', 'a #b'],
-        ['hashWithoutSpace', 'a#b'],
-        ['startsWithHash', '#x'],
-        ['startsWithAsterisk', '*x'],
-        ['startsWithAmpersand', '&x'],
-        ['startsWithExclamationMark', '!x'],
-        ['startsWithPipe', '|x'],
-        ['startsWithGreaterThan', '>x'],
-        ['startsWithSingleQuote', '\'x'],
-        ['startsWithDoubleQuote', '"x'],
-        ['startsWithPercent', '%x'],
-        ['startsWithAt', '@x'],
-        ['startsWithBacktick', '`x'],
-        ['startsWithDashAndSpace', '- x'],
-        ['startsWithQuestionMarkAndSpace', '? x'],
-        ['startsWithOpeningBracket', '[x'],
-        ['startsWithClosingBracket', ']x'],
-        ['startsWithOpeningBrace', '{x'],
-        ['startsWithClosingBrace', '}x'],
-        ['startsWithComma', ',x'],
-        ['startsWithDash', '-x'],
-        ['startsWithQuestionMark', '?x'],
-        ['startsWithColon', ':x'],
-        ['leadingSpace', ' x'],
-        ['trailingSpace', 'x '],
-        ['apostrophe', 'it\'s'],
-        ['doubleQuotesInside', 'say "hi"'],
-        ['lineBreak', "a\nb"],
-        ['backslash', 'a\\b'],
-        ['tab', "a\tb"],
+        ['2001-12-14', null],
+        ['a: b', null],
+        ['a:b', null],
+        ['a #b', null],
+        ['a#b', null],
+        ['#x', null],
+        ['*x', null],
+        ['&x', null],
+        ['!x', null],
+        ['|x', null],
+        ['>x', null],
+        ['\'x', null],
+        ['"x', null],
+        ['%x', null],
+        ['@x', null],
+        ['`x', null],
+        ['- x', null],
+        ['? x', null],
+        [',x', null],
+        ['-x', null],
+        ['?x', null],
+        [':x', null],
+        [' x', null],
+        ['x ', null],
+        ['it\'s', null],
+        ['say "hi"', null],
+        ['a\\b', null],
     ];
 
     private const FREE_TEXT_YAML = <<<YAML
@@ -188,125 +179,68 @@ final class ContractToYamlTest extends TestCase
               looksLikeNull:
                 type: string
                 description: "null"
-              looksLikeTildeNull:
+              "~":
                 type: string
-                description: "~"
-              empty:
-                type: string
-                description: ""
               looksLikeInteger:
                 type: string
                 description: "123"
-              looksLikeFloat:
-                type: string
-                description: "1.5"
               looksLikeHexadecimal:
                 type: string
                 description: "0x1F"
-              looksLikeInfinity:
+              2001-12-14:
                 type: string
-                description: ".inf"
-              looksLikeDate:
+              "a: b":
                 type: string
-                description: 2001-12-14
-              colonAndSpace:
+              a:b:
                 type: string
-                description: "a: b"
-              colonWithoutSpace:
+              "a #b":
                 type: string
-                description: a:b
-              spaceAndHash:
+              a#b:
                 type: string
-                description: "a #b"
-              hashWithoutSpace:
+              "#x":
                 type: string
-                description: a#b
-              startsWithHash:
+              "*x":
                 type: string
-                description: "#x"
-              startsWithAsterisk:
+              "&x":
                 type: string
-                description: "*x"
-              startsWithAmpersand:
+              "!x":
                 type: string
-                description: "&x"
-              startsWithExclamationMark:
+              "|x":
                 type: string
-                description: "!x"
-              startsWithPipe:
+              ">x":
                 type: string
-                description: "|x"
-              startsWithGreaterThan:
+              "'x":
                 type: string
-                description: ">x"
-              startsWithSingleQuote:
+              '"x':
                 type: string
-                description: "'x"
-              startsWithDoubleQuote:
+              "%x":
                 type: string
-                description: '"x'
-              startsWithPercent:
+              "@x":
                 type: string
-                description: "%x"
-              startsWithAt:
+              "`x":
                 type: string
-                description: "@x"
-              startsWithBacktick:
+              "- x":
                 type: string
-                description: "`x"
-              startsWithDashAndSpace:
+              "? x":
                 type: string
-                description: "- x"
-              startsWithQuestionMarkAndSpace:
+              ",x":
                 type: string
-                description: "? x"
-              startsWithOpeningBracket:
+              -x:
                 type: string
-                description: "[x"
-              startsWithClosingBracket:
+              ?x:
                 type: string
-                description: "]x"
-              startsWithOpeningBrace:
+              :x:
                 type: string
-                description: "{x"
-              startsWithClosingBrace:
+              " x":
                 type: string
-                description: "}x"
-              startsWithComma:
+              "x ":
                 type: string
-                description: ",x"
-              startsWithDash:
+              it's:
                 type: string
-                description: -x
-              startsWithQuestionMark:
+              say "hi":
                 type: string
-                description: ?x
-              startsWithColon:
+              a\\b:
                 type: string
-                description: :x
-              leadingSpace:
-                type: string
-                description: " x"
-              trailingSpace:
-                type: string
-                description: "x "
-              apostrophe:
-                type: string
-                description: it's
-              doubleQuotesInside:
-                type: string
-                description: say "hi"
-              lineBreak:
-                type: string
-                description: |-
-                  a
-                  b
-              backslash:
-                type: string
-                description: a\\b
-              tab:
-                type: string
-                description: a\tb
 
         YAML;
 
@@ -497,7 +431,7 @@ final class ContractToYamlTest extends TestCase
     {
         $at = new SourceLocation('src/Pet.php', 1);
         $properties = [];
-        foreach (self::FREE_TEXT_DESCRIPTIONS as [$name, $description]) {
+        foreach (self::FREE_TEXT_PROPERTIES as [$name, $description]) {
             $node = new PrimitiveNode('string');
             $node->description = $description;
             $properties[] = new Property($name, $node, $at);

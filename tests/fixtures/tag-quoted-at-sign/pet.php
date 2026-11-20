@@ -17,6 +17,12 @@ final class Pet
 
     /** @bidirekt field description="Hello, world! (a.k.a. 'hi'); 50% off: yes? #1 & more." */
     public string $greeting;
+
+    /** @bidirekt field description="a @ sign" */
+    public string $sign;
+
+    /** @bidirekt field description="code `@x` here" */
+    public string $code;
 }
 
 final class PetsController

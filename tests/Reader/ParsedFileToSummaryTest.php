@@ -36,7 +36,7 @@ final class ParsedFileToSummaryTest extends TestCase
             public const KIND = self::class;
 
             /** @var list<Label> */
-            #[BidirektField(description: 'The tags.')]
+            #[BidirektField(description: 'The tags')]
             public array $tags;
 
             public function __construct(

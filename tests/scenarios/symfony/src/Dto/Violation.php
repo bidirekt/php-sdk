@@ -23,6 +23,6 @@ final class Violation
     #[BidirektField]
     public array $parameters;
 
-    #[BidirektField(optional: true, description: 'urn:uuid: of the failed constraint')]
+    #[BidirektField(optional: true, description: 'urn uuid of the failed constraint')]
     public string $type;
 }

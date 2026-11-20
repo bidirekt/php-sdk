@@ -21,120 +21,93 @@ final class Pet
     #[BidirektField(description: 'null')]
     public string $looksLikeNull;
 
-    #[BidirektField(description: '~')]
+    #[BidirektField(name: '~')]
     public string $looksLikeTildeNull;
-
-    #[BidirektField(description: '')]
-    public string $empty;
 
     #[BidirektField(description: '123')]
     public string $looksLikeInteger;
 
-    #[BidirektField(description: '1.5')]
-    public string $looksLikeFloat;
-
     #[BidirektField(description: '0x1F')]
     public string $looksLikeHexadecimal;
 
-    #[BidirektField(description: '.inf')]
-    public string $looksLikeInfinity;
-
-    #[BidirektField(description: '2001-12-14')]
+    #[BidirektField(name: '2001-12-14')]
     public string $looksLikeDate;
 
-    #[BidirektField(description: 'a: b')]
+    #[BidirektField(name: 'a: b')]
     public string $colonAndSpace;
 
-    #[BidirektField(description: 'a:b')]
+    #[BidirektField(name: 'a:b')]
     public string $colonWithoutSpace;
 
-    #[BidirektField(description: 'a #b')]
+    #[BidirektField(name: 'a #b')]
     public string $spaceAndHash;
 
-    #[BidirektField(description: 'a#b')]
+    #[BidirektField(name: 'a#b')]
     public string $hashWithoutSpace;
 
-    #[BidirektField(description: '#x')]
+    #[BidirektField(name: '#x')]
     public string $startsWithHash;
 
-    #[BidirektField(description: '*x')]
+    #[BidirektField(name: '*x')]
     public string $startsWithAsterisk;
 
-    #[BidirektField(description: '&x')]
+    #[BidirektField(name: '&x')]
     public string $startsWithAmpersand;
 
-    #[BidirektField(description: '!x')]
+    #[BidirektField(name: '!x')]
     public string $startsWithExclamationMark;
 
-    #[BidirektField(description: '|x')]
+    #[BidirektField(name: '|x')]
     public string $startsWithPipe;
 
-    #[BidirektField(description: '>x')]
+    #[BidirektField(name: '>x')]
     public string $startsWithGreaterThan;
 
-    #[BidirektField(description: '\'x')]
+    #[BidirektField(name: '\'x')]
     public string $startsWithSingleQuote;
 
-    #[BidirektField(description: '"x')]
+    #[BidirektField(name: '"x')]
     public string $startsWithDoubleQuote;
 
-    #[BidirektField(description: '%x')]
+    #[BidirektField(name: '%x')]
     public string $startsWithPercent;
 
-    #[BidirektField(description: '@x')]
+    #[BidirektField(name: '@x')]
     public string $startsWithAt;
 
-    #[BidirektField(description: '`x')]
+    #[BidirektField(name: '`x')]
     public string $startsWithBacktick;
 
-    #[BidirektField(description: '- x')]
+    #[BidirektField(name: '- x')]
     public string $startsWithDashAndSpace;
 
-    #[BidirektField(description: '? x')]
+    #[BidirektField(name: '? x')]
     public string $startsWithQuestionMarkAndSpace;
 
-    #[BidirektField(description: '[x')]
-    public string $startsWithOpeningBracket;
-
-    #[BidirektField(description: ']x')]
-    public string $startsWithClosingBracket;
-
-    #[BidirektField(description: '{x')]
-    public string $startsWithOpeningBrace;
-
-    #[BidirektField(description: '}x')]
-    public string $startsWithClosingBrace;
-
-    #[BidirektField(description: ',x')]
+    #[BidirektField(name: ',x')]
     public string $startsWithComma;
 
-    #[BidirektField(description: '-x')]
+    #[BidirektField(name: '-x')]
     public string $startsWithDash;
 
-    #[BidirektField(description: '?x')]
+    #[BidirektField(name: '?x')]
     public string $startsWithQuestionMark;
 
-    #[BidirektField(description: ':x')]
+    #[BidirektField(name: ':x')]
     public string $startsWithColon;
 
-    #[BidirektField(description: ' x')]
+    #[BidirektField(name: ' x')]
     public string $leadingSpace;
 
-    #[BidirektField(description: 'x ')]
+    #[BidirektField(name: 'x ')]
     public string $trailingSpace;
 
-    #[BidirektField(description: "it's")]
+    #[BidirektField(name: "it's")]
     public string $apostrophe;
 
-    #[BidirektField(description: 'say "hi"')]
+    #[BidirektField(name: 'say "hi"')]
     public string $doubleQuotesInside;
 
-    #[BidirektField(description: "a\nb")]
-    public string $lineBreak;
-
-    #[BidirektField(description: 'a\\b')]
+    #[BidirektField(name: 'a\\b')]
     public string $backslash;
-
-    #[BidirektField(description: "a\tb")]
-    public string $tab;
 }

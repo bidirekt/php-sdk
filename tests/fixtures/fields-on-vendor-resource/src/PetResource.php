@@ -11,7 +11,7 @@ use Bidirekt\PhpSdk\BidirektSchema;
     new BidirektField('name', type: 'string'),
     new BidirektField('tag', type: 'string', nullable: true),
     new BidirektField('photoUrls', type: 'array', items: 'string', optional: true),
-    new BidirektField('status', type: 'string', description: 'available, pending or sold'),
+    new BidirektField('status', type: 'string', description: 'available pending or sold'),
 ])]
 final class PetResource extends JsonResource
 {

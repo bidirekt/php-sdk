@@ -181,7 +181,7 @@ final class GenerateCommandTest extends TestCase
         $types = ['string', 'int', '?string', 'bool', 'float'];
         $fields = '';
         for ($field = 0; $field < 10; $field++) {
-            $fields .= sprintf("        #[BidirektField(description: 'Field %d of the resource.')]\n        public %s \$field%d,\n", $field, $types[$field % 5], $field);
+            $fields .= sprintf("        #[BidirektField(description: 'Field %d of the resource')]\n        public %s \$field%d,\n", $field, $types[$field % 5], $field);
         }
 
         return "<?php\n\nnamespace App\\Dto;\n\nuse Bidirekt\\PhpSdk\\BidirektField;\nuse Bidirekt\\PhpSdk\\BidirektSchema;\n\n"

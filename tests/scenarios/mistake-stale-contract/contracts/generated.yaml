@@ -60,7 +60,7 @@ schemas:
         type: string
       status:
         type: string
-        description: available, pending or sold
+        description: available pending or sold
       weight:
         type: float
       ownerId:
@@ -81,7 +81,7 @@ schemas:
     properties:
       status:
         type: string
-        description: available, pending or sold
+        description: available pending or sold
   ValidationError:
     type: object
     properties:
@@ -91,4 +91,4 @@ schemas:
         type: map
         values:
           type: string
-        description: The problem with each invalid field, by field name
+        description: The problem with each invalid field by field name
