@@ -39,7 +39,7 @@ schemas:
       birthDate:
         type: string
         nullable: true
-        description: ISO 8601 date, like 2024-05-17
+        description: ISO 8601 date
   PetList:
     type: array
     items:

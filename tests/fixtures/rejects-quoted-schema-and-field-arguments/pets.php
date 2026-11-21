@@ -19,7 +19,7 @@ final class Pet
     /** @bidirekt field description=the"tag */
     public string $tag;
 
-    /** @bidirekt field description="the pet's age" */
+    /** @bidirekt field description="the age of the pet" */
     public int $age;
 }
 

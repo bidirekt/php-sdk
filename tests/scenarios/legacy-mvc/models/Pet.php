@@ -20,7 +20,7 @@ class Pet extends Model
     public $nickname;
 
     /**
-     * @bidirekt field description="available, pending or sold"
+     * @bidirekt field description="available pending or sold"
      * @var string
      */
     public $status = 'available';

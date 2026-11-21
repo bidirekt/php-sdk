@@ -6,7 +6,7 @@ pets.php:22 cannot read "type=map<integer" in "@bidirekt field": write "type=" f
 pets.php:25 cannot read "optional=yes" in "@bidirekt field": write "optional=true" or "optional=false"
 pets.php:28 cannot read "nullable=1" in "@bidirekt field": write "nullable=true" or "nullable=false"
 pets.php:31 cannot read "name=" in "@bidirekt field": write "name=<name>"
-pets.php:34 cannot read "description=""" in "@bidirekt field": write description="<text>"
+pets.php:34 "description" is empty: write a description or leave "description" out
 pets.php:37 cannot read "union=card" in "@bidirekt field": write "union={<key>: <schema>, ...}"
 pets.php:40 cannot read "union={card: CardPayment, card: PixPayment}" in "@bidirekt field": write "union={<key>: <schema>, ...}"
 pets.php:43 "name=" is declared more than once in "@bidirekt field": keep one

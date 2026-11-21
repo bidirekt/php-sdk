@@ -22,7 +22,7 @@ use Override;
     new BidirektField('ownerId', type: 'integer'),
     new BidirektField('category', type: Category::class, optional: true, nullable: true),
     new BidirektField('tags', type: 'array', items: 'string'),
-    new BidirektField('createdAt', type: 'string', description: 'ISO 8601, in UTC'),
+    new BidirektField('createdAt', type: 'string', description: 'ISO 8601 in UTC'),
 ])]
 class PetResource extends JsonResource
 {

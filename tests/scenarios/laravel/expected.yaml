@@ -69,7 +69,7 @@ schemas:
     properties:
       status:
         type: string
-        description: ok, or down when the database does not answer
+        description: ok or down when the database does not answer
       database:
         type: boolean
   NewPet:
@@ -115,7 +115,7 @@ schemas:
           type: string
       createdAt:
         type: string
-        description: ISO 8601, in UTC
+        description: ISO 8601 in UTC
   PetCollection:
     type: object
     properties:
@@ -147,4 +147,4 @@ schemas:
           type: array
           items:
             type: string
-        description: The messages of each invalid field, by field name
+        description: The messages of each invalid field by field name

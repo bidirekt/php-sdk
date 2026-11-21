@@ -14,7 +14,7 @@ final class Pet
         #[BidirektField] public int $id,
         #[BidirektField] public string $name,
         #[BidirektField] public PetStatus $status,
-        #[BidirektField(description: 'ISO 8601 date, like 2024-05-17')] public ?string $birthDate,
+        #[BidirektField(description: 'ISO 8601 date')] public ?string $birthDate,
     ) {
     }
 }

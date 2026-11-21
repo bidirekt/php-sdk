@@ -526,16 +526,16 @@ An argument is read from the code, never run: a literal, an array, `X::class`, a
 
 `#[BidirektField(...)]` and `@bidirekt field key=value ...` take the same options:
 
-| Attribute                                                           | Tag                                          | What it declares                                                             |
-| ------------------------------------------------------------------- | -------------------------------------------- | ---------------------------------------------------------------------------- |
-| `name: 'birth_date'`                                                | `name=birth_date`                            | the field's name in the contract; without it, the property's name            |
-| `type: 'float'`                                                     | `type=float`                                 | the whole type of the field, see [Types](#types)                             |
-| `items: 'Owner'`                                                    | `items=Owner`                                | the type of the items of `type: 'array'`                                     |
-| `values: 'string'`                                                  | `values=string`                              | the type of the values of `type: 'map'`                                      |
-| `optional: true`                                                    | `optional=true`                              | whether the field can be absent; without it, it can't                        |
-| `nullable: true`                                                    | `nullable=true`                              | whether the field can be `null`; without it, from `?T` or `null` in the type |
-| `description: 'In kilograms'`                                       | `description="In kilograms"`                 | the field's description; a plain docblock is not one                         |
-| `union: ['person' => Owner::class, 'shelter' => Shelter::class]`    | `union={person: Owner, shelter: Shelter}`    | the key of each member of a union of schemas                                 |
+| Attribute                                                        | Tag                                       | What it declares                                                                                                |
+| ---------------------------------------------------------------- | ----------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `name: 'birth_date'`                                             | `name=birth_date`                         | the field's name in the contract; without it, the property's name                                               |
+| `type: 'float'`                                                  | `type=float`                              | the whole type of the field, see [Types](#types)                                                                |
+| `items: 'Owner'`                                                 | `items=Owner`                             | the type of the items of `type: 'array'`                                                                        |
+| `values: 'string'`                                               | `values=string`                           | the type of the values of `type: 'map'`                                                                         |
+| `optional: true`                                                 | `optional=true`                           | whether the field can be absent; without it, it can't                                                           |
+| `nullable: true`                                                 | `nullable=true`                           | whether the field can be `null`; without it, from `?T` or `null` in the type                                    |
+| `description: 'In kilograms'`                                    | `description="In kilograms"`              | the field's description, ASCII letters and digits with single spaces between words; a plain docblock is not one |
+| `union: ['person' => Owner::class, 'shelter' => Shelter::class]` | `union={person: Owner, shelter: Shelter}` | the key of each member of a union of schemas                                                                    |
 
 A promoted constructor parameter is a field like a property. An annotation on a parameter that is not promoted, or on a `static` property, is not read, and `generate` warns.
 
@@ -567,7 +567,7 @@ A tag is `@bidirekt <keyword>` at the start of a line of a `/** */` docblock, wi
 | `@bidirekt request [schema]`                     | after `provides` or `consumes`; with no schema, `request: ~`                 |
 | `@bidirekt response <status> [schema]`           | after `provides` or `consumes`, one per status                               |
 
-- Only a `description` value is quoted, and only a `union=` value is grouped in `{...}` (spaces inside it are optional); quotes or braces anywhere else stop `generate`. `items=` and `values=` take a primitive or a schema name: a tag doesn't nest, so a list of lists needs the PHPDoc.
+- Only a `description` value is quoted, and it holds ASCII letters and digits with single spaces between words, as in the attribute; only a `union=` value is grouped in `{...}` (spaces inside it are optional); quotes or braces anywhere else stop `generate`. `items=` and `values=` take a primitive or a schema name: a tag doesn't nest, so a list of lists needs the PHPDoc.
 - In a path, write a `*` followed by another segment as `*\/` (`/pets/*\/photos`): a bare `*/` would end the docblock. `generate` reads `*\/` as `*/`.
 - A docblock declares at most one handler. It goes above the element and above its attributes, which is where PHP attaches it; tags in two docblocks on the same element stop `generate`.
 - `/* */`, `//` and `#` comments are not read, nor a `@bidirekt` later in a line, in a fenced block or in an `@example`. `generate` warns about each tag it leaves unread, a docblock it can't attach to an element, and a misspelled `@Bidirekt`. Other tags in the docblock (`@param`, `@var`, `@OA\Get`) are left alone.

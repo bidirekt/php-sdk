@@ -17,7 +17,7 @@ final class Pet implements JsonSerializable
     public function __construct(
         #[BidirektField] public int $petId,
         #[BidirektField] public string $name,
-        #[BidirektField(description: 'available, pending or sold')] public string $status,
+        #[BidirektField(description: 'available pending or sold')] public string $status,
         #[BidirektField(type: 'float')] public float $weight,
         #[BidirektField] public int $ownerId,
         #[BidirektField] public string $photoUrl,

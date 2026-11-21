@@ -40,7 +40,7 @@ Route::prefix('owners')->group(function () {
  * @bidirekt response 200 Health
  * @bidirekt response 503 Health
  * @bidirekt schema Health
- * @bidirekt field status type=string description="ok, or down when the database does not answer"
+ * @bidirekt field status type=string description="ok or down when the database does not answer"
  * @bidirekt field database type=boolean
  */
 Route::get('/health', function () {

@@ -1,0 +1,6 @@
+pet.php:6 description "mail me @home" must be ASCII letters and digits, with single spaces between words: remove or replace the other characters
+pet.php:9 description "ask @vet first" must be ASCII letters and digits, with single spaces between words: remove or replace the other characters
+pet.php:13 description "seen at\nnoon @daily" must be ASCII letters and digits, with single spaces between words: remove or replace the other characters
+pet.php:18 description "Hello, world! (a.k.a. 'hi'); 50% off: yes? #1 & more." must be ASCII letters and digits, with single spaces between words: remove or replace the other characters
+pet.php:21 description "a @ sign" must be ASCII letters and digits, with single spaces between words: remove or replace the other characters
+pet.php:24 description "code `@x` here" must be ASCII letters and digits, with single spaces between words: remove or replace the other characters

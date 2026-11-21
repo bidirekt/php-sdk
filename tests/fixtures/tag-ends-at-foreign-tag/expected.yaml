@@ -13,12 +13,6 @@ schemas:
         type: string
       age:
         type: integer
-      sign:
-        type: string
-        description: a @ sign
-      code:
-        type: string
-        description: code `@x` here
       notes:
         type: string
         description: two lines
