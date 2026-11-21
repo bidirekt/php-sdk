@@ -196,7 +196,7 @@ for name in "$@"; do
   if [ -n "$contract" ]; then
     participant=$(printf '%s' "$name" | tr - _)
     bidirekt create-participant "$participant" || continue
-    bidirekt validate "$contract" --participant "$participant" --environment production || continue
+    bidirekt validate "$contract" || continue
     bidirekt publish "$contract" --participant "$participant" --version 1 || continue
   fi
 

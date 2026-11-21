@@ -494,12 +494,15 @@ vendor/bin/php-sdk generate --project apps/api --out apps/api/contracts/generate
 
 ```sh
 vendor/bin/php-sdk generate
+bidirekt validate contracts/generated.yaml
 bidirekt validate contracts/generated.yaml --participant petstore_php --environment production
 bidirekt publish contracts/generated.yaml --participant petstore_php --version 1.4.0
 bidirekt can-i-deploy petstore_php --version 1.4.0 --environment production
 # deploy
 bidirekt record-deployment petstore_php --version 1.4.0 --environment production
 ```
+
+`bidirekt validate` without `--participant` and `--environment` checks only the file; with them, it also compares the file with what is deployed in that environment.
 
 `generate` reads the source and never runs your app. With a `composer.json`, it reads every `.php` file of the folder except `vendor/` (or the `config.vendor-dir`), `node_modules/`, hidden folders and the paths of `autoload-dev`; without one, every `.php` file except the same folders. It reads `vendor/` only to find a parent, a trait, an enum or a constant your annotated code uses, through Composer's class maps (`vendor/composer/autoload_psr4.php`, `autoload_namespaces.php`, `autoload_classmap.php`) and `vendor/composer/installed.json`, from the `composer.json` closest to the project, going up as Composer does in a monorepo but never to your home folder or above. It loads those maps with `require`, since they only return arrays, and never loads `vendor/autoload.php` nor the `autoload.files`. A package installed from a Composer `path` repository is read as your code. A file that never mentions `bidirekt` is parsed only when your annotated code uses a class it declares; a syntax error stops `generate` in a file with annotations or in a file it parses for that reason.
 
