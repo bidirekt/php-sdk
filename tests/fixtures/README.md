@@ -10,7 +10,7 @@ A case holds:
   The fixtures are code of example projects, with errors on purpose: PHPStan, PHP-CS-Fixer and PHPUnit skip this folder, and a case may use any PHP syntax.
 - Exactly one expected result:
   - `expected.yaml`: `generate` exits 0 and `contracts/generated.yaml` equals this one byte by byte. stderr equals `expected-stderr.txt` when the case has one (warnings), and is empty otherwise.
-    Every `expected.yaml` must be a contract broker 0.2.1 accepts: the `e2e` job publishes each one.
+    Every `expected.yaml` must be a contract the broker pinned in `tests/e2e/compose.yaml` accepts: the `e2e` job publishes each one.
     A port of a `typescript-sdk` fixture keeps its folder name and its `expected.yaml` from line 2 on; line 1 is each SDK's header.
   - `expected-error.txt`: `generate` exits 1, stderr equals this file byte by byte, and no file in the case changes.
 - `args.txt` (optional): the flags passed after `generate`, separated by whitespace, e.g. `--check`. The result is always read from `contracts/generated.yaml` of the case folder.

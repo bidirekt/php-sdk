@@ -1,6 +1,6 @@
 # Scenarios
 
-Each folder is a project as a developer has it, run end to end by `run.sh`: `composer install`, `vendor/bin/php-sdk generate`, `generate --check`, then `bidirekt validate` and `bidirekt publish` of the generated contract on a broker 0.2.1. What the scenario checks is what the developer sees, so the SDK may change in any way inside as long as every scenario passes. Adding a scenario is adding a folder.
+Each folder is a project as a developer has it, run end to end by `run.sh`: `composer install`, `vendor/bin/php-sdk generate`, `generate --check`, then `bidirekt validate` and `bidirekt publish` of the generated contract on the broker pinned in `../e2e/compose.yaml`. What the scenario checks is what the developer sees, so the SDK may change in any way inside as long as every scenario passes. Adding a scenario is adding a folder.
 
 A flow scenario is two teams living with each other's contracts: several projects, a provider and its consumers, and the commands their developers type, in order, with what each one prints, from `generate` to the `can-i-deploy` that fails when the provider breaks a field a consumer reads.
 
@@ -26,7 +26,7 @@ Name the folder in kebab-case: its participant on the broker is the name in snak
 ## A flow scenario
 
 - A folder per service, each a project as above, with its `.php-version`, `composer.json` and `composer.lock`; its `path` repository is at `../../../..`, a folder deeper. `run.sh` runs `composer install` in each one before the steps.
-- `steps.txt`: the terminal of the developers, as they would see it. A line `<service>$ <command>` is a command typed in the folder of that service; the lines below it, up to the next command, are what it prints, stdout and stderr together; `[<code>]` closes the output of a command that exits with a code other than 0. A command that starts with `bidirekt` runs in the CLI 0.2.1, with the broker of the run; any other runs with `sh` in the service's PHP, where `vendor/bin/php-sdk`, `cat` and `patch` are. Nothing else in the file: no comments, no blank lines but the ones a command prints.
+- `steps.txt`: the terminal of the developers, as they would see it. A line `<service>$ <command>` is a command typed in the folder of that service; the lines below it, up to the next command, are what it prints, stdout and stderr together; `[<code>]` closes the output of a command that exits with a code other than 0. A command that starts with `bidirekt` runs in the CLI pinned in the `bidirekt` service of `compose.yaml`, with the broker of the run; any other runs with `sh` in the service's PHP, where `vendor/bin/php-sdk`, `cat` and `patch` are. Nothing else in the file: no comments, no blank lines but the ones a command prints.
 - Anything else the steps use, like a patch for `patch -p1 < ../<name>.patch`, beside `steps.txt`.
 
 `cross-service` is the example: `petstore-api` (Slim 4 on PHP 8.5, attributes) publishes v1 and records its deployment to `production`; `storefront` (Guzzle on PHP 8.0, an attribute and a tag on its client) validates, publishes, gets a green `can-i-deploy` against the deployed `petstore-api`, and records its deployment; then `rename-pet-name.patch` renames the `name` that `storefront` reads, and the regenerated `petstore-api` gets a red `validate` and `can-i-deploy` with the break.
@@ -45,13 +45,13 @@ It starts the broker of `../e2e/compose.yaml`, creates the API key and the `prod
 
 1. In the scenario's `php-<version>` service, copies the folder, without `vendor/`, to the same path over the checkout (so `../../..` is the SDK), and runs `composer install` there. The scenarios of a run share the Composer cache.
 2. Runs `generate` with `args.txt` and compares exit code, stdout, stderr, the contract and the files written; with `expected.yaml`, runs `generate --check`, which must exit 0 with the same stderr.
-3. With `expected.yaml`: `bidirekt create-participant`, `bidirekt validate --environment production` and `bidirekt publish --version 1` of the generated contract.
+3. With `expected.yaml`: `bidirekt create-participant`, `bidirekt validate` and `bidirekt publish --version 1` of the generated contract.
 
 Then, per flow scenario (run without names, the flows come after the project scenarios), it copies the folder in the same way, runs `composer install` in each service, runs each command of `steps.txt` in the copy of its service, and compares what they printed with `steps.txt`.
 
 It prints `ok <scenario>` or `FAIL <scenario>` with the reason (the diff when the contract, stderr or transcript differs), then a summary line, and exits 1 when a scenario fails. It prints the broker's log only when a broker step failed or a flow's transcript differs. On exit and on a signal it removes the compose project with its volumes.
 
-Nothing is deployed in `production` for a project scenario, so `validate` refuses a contract that consumes: "not deployed". A service that consumes belongs in a flow scenario, after the steps that publish its provider and record its deployment.
+A project scenario's `validate` runs without `--participant` and `--environment`: it checks only the file, so a project that consumes passes with nothing deployed. To compare a consumer with its deployed provider, write a flow scenario whose steps publish the provider and record its deployment first.
 
 ## Writing the lock
 
