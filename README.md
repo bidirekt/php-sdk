@@ -40,15 +40,36 @@ final class Pet
      * @param array<string, string> $notes
      */
     public function __construct(
-        #[BidirektField] public int $id,
-        #[BidirektField] public string $name,
-        #[BidirektField] public PetStatus $status,
-        #[BidirektField] public Owner $owner,
-        #[BidirektField] public array $tags,
-        #[BidirektField] public array $notes,
-        #[BidirektField(type: 'float', description: 'In kilograms')] public float $weight,
-        #[BidirektField] public ?string $birthDate,
-        #[BidirektField(union: ['person' => Owner::class, 'shelter' => Shelter::class])]
+        #[BidirektField]
+        public int $id,
+
+        #[BidirektField]
+        public string $name,
+
+        #[BidirektField]
+        public PetStatus $status,
+
+        #[BidirektField]
+        public Owner $owner,
+
+        #[BidirektField]
+        public array $tags,
+
+        #[BidirektField]
+        public array $notes,
+
+        #[BidirektField(type: 'float', description: 'In kilograms')]
+        public float $weight,
+
+        #[BidirektField]
+        public ?string $birthDate,
+
+        #[BidirektField(
+            union: [
+                'person' => Owner::class,
+                'shelter' => Shelter::class,
+            ],
+        )]
         public Owner|Shelter $adoptedFrom,
     ) {}
 
@@ -82,7 +103,10 @@ use Bidirekt\PhpSdk\BidirektSchema;
 #[BidirektSchema]
 final class Owner
 {
-    public function __construct(#[BidirektField] public string $name) {}
+    public function __construct(
+        #[BidirektField]
+        public string $name,
+    ) {}
 }
 ```
 
@@ -98,7 +122,10 @@ use Bidirekt\PhpSdk\BidirektSchema;
 #[BidirektSchema]
 final class Shelter
 {
-    public function __construct(#[BidirektField] public string $city) {}
+    public function __construct(
+        #[BidirektField]
+        public string $city,
+    ) {}
 }
 ```
 
@@ -114,7 +141,10 @@ use Bidirekt\PhpSdk\BidirektSchema;
 #[BidirektSchema]
 final class NewPet
 {
-    public function __construct(#[BidirektField] public string $name) {}
+    public function __construct(
+        #[BidirektField]
+        public string $name,
+    ) {}
 }
 ```
 
@@ -131,8 +161,11 @@ use Bidirekt\PhpSdk\BidirektSchema;
 final class Rating
 {
     public function __construct(
-        #[BidirektField] public float $average,
-        #[BidirektField] public int $count,
+        #[BidirektField]
+        public float $average,
+
+        #[BidirektField]
+        public int $count,
     ) {}
 }
 ```
@@ -153,25 +186,51 @@ final class PetController
 {
     public function __construct(private PetRepository $pets) {}
 
-    #[BidirektProvider(method: 'GET', path: '/pets/*', responses: [200 => Pet::class, 404 => null])]
-    public function show(Request $request, Response $response, array $args): Response
-    {
+    #[BidirektProvider(
+        method: 'GET',
+        path: '/pets/*',
+        responses: [
+            200 => Pet::class,
+            404 => null,
+        ],
+    )]
+    public function show(
+        Request $request,
+        Response $response,
+        array $args,
+    ): Response {
         $pet = $this->pets->find((int) $args['id']);
+        if ($pet === null) {
+            return $response->withStatus(404);
+        }
 
-        return $pet === null ? $response->withStatus(404) : self::json($response, $pet);
+        return self::json($response, $pet);
     }
 
-    #[BidirektProvider(method: 'POST', path: '/pets', request: NewPet::class, responses: [201 => Pet::class, 400 => null])]
+    #[BidirektProvider(
+        method: 'POST',
+        path: '/pets',
+        request: NewPet::class,
+        responses: [
+            201 => Pet::class,
+            400 => null,
+        ],
+    )]
     public function create(Request $request, Response $response): Response
     {
         $name = $request->getParsedBody()['name'] ?? null;
+        if (!is_string($name)) {
+            return $response->withStatus(400);
+        }
 
-        return is_string($name) ? self::json($response->withStatus(201), $this->pets->add($name)) : $response->withStatus(400);
+        return self::json($response->withStatus(201), $this->pets->add($name));
     }
 
     private static function json(Response $response, Pet $pet): Response
     {
-        $response->getBody()->write((string) json_encode($pet, JSON_PRESERVE_ZERO_FRACTION));
+        $response->getBody()->write(
+            (string) json_encode($pet, JSON_PRESERVE_ZERO_FRACTION),
+        );
 
         return $response->withHeader('Content-Type', 'application/json');
     }
@@ -193,13 +252,28 @@ final class ReviewsClient
 {
     public function __construct(private Client $http) {}
 
-    #[BidirektConsumer(provider: 'petstore_reviews', method: 'GET', path: '/ratings/*', responses: [200 => Rating::class, 404 => null])]
+    #[BidirektConsumer(
+        provider: 'petstore_reviews',
+        method: 'GET',
+        path: '/ratings/*',
+        responses: [
+            200 => Rating::class,
+            404 => null,
+        ],
+    )]
     public function rating(int $petId): ?Rating
     {
-        $response = $this->http->get("/ratings/{$petId}", ['http_errors' => false]);
+        $response = $this->http->get(
+            "/ratings/{$petId}",
+            ['http_errors' => false],
+        );
         $body = json_decode((string) $response->getBody(), true);
 
-        return $response->getStatusCode() === 404 ? null : new Rating($body['average'], $body['count']);
+        if ($response->getStatusCode() === 404) {
+            return null;
+        }
+
+        return new Rating($body['average'], $body['count']);
     }
 }
 ```
@@ -222,20 +296,28 @@ final class Pet
     public function __construct(
         /** @bidirekt field */
         public int $id,
+
         /** @bidirekt field */
         public string $name,
+
         /** @bidirekt field */
         public PetStatus $status,
+
         /** @bidirekt field */
         public Owner $owner,
+
         /** @bidirekt field */
         public array $tags,
+
         /** @bidirekt field */
         public array $notes,
+
         /** @bidirekt field type=float description="In kilograms" */
         public float $weight,
+
         /** @bidirekt field */
         public ?string $birthDate,
+
         /** @bidirekt field union={person: Owner, shelter: Shelter} */
         public Owner|Shelter $adoptedFrom,
     ) {}
@@ -263,11 +345,17 @@ final class PetController
      * @bidirekt response 200 Pet
      * @bidirekt response 404
      */
-    public function show(Request $request, Response $response, array $args): Response
-    {
+    public function show(
+        Request $request,
+        Response $response,
+        array $args,
+    ): Response {
         $pet = $this->pets->find((int) $args['id']);
+        if ($pet === null) {
+            return $response->withStatus(404);
+        }
 
-        return $pet === null ? $response->withStatus(404) : self::json($response, $pet);
+        return self::json($response, $pet);
     }
 
     /**
@@ -279,13 +367,18 @@ final class PetController
     public function create(Request $request, Response $response): Response
     {
         $name = $request->getParsedBody()['name'] ?? null;
+        if (!is_string($name)) {
+            return $response->withStatus(400);
+        }
 
-        return is_string($name) ? self::json($response->withStatus(201), $this->pets->add($name)) : $response->withStatus(400);
+        return self::json($response->withStatus(201), $this->pets->add($name));
     }
 
     private static function json(Response $response, Pet $pet): Response
     {
-        $response->getBody()->write((string) json_encode($pet, JSON_PRESERVE_ZERO_FRACTION));
+        $response->getBody()->write(
+            (string) json_encode($pet, JSON_PRESERVE_ZERO_FRACTION),
+        );
 
         return $response->withHeader('Content-Type', 'application/json');
     }
@@ -414,14 +507,26 @@ use Psr\Http\Message\ServerRequestInterface as Request;
 
 final class StatsController
 {
-    #[BidirektProvider(method: 'GET', path: '/stats', responses: [200 => 'PetStats'])]
-    #[BidirektSchema(name: 'PetStats', fields: [
-        new BidirektField('total', type: 'integer'),
-        new BidirektField('byStatus', type: 'map', values: 'integer'),
-    ])]
+    #[BidirektProvider(
+        method: 'GET',
+        path: '/stats',
+        responses: [200 => 'PetStats'],
+    )]
+    #[BidirektSchema(
+        name: 'PetStats',
+        fields: [
+            new BidirektField('total', type: 'integer'),
+            new BidirektField('byStatus', type: 'map', values: 'integer'),
+        ],
+    )]
     public function show(Request $request, Response $response): Response
     {
-        $response->getBody()->write((string) json_encode(['total' => 3, 'byStatus' => ['available' => 2, 'adopted' => 1]]));
+        $response->getBody()->write(
+            (string) json_encode([
+                'total' => 3,
+                'byStatus' => ['available' => 2, 'adopted' => 1],
+            ]),
+        );
 
         return $response->withHeader('Content-Type', 'application/json');
     }
@@ -449,7 +554,12 @@ final class StatsController
      */
     public function show(Request $request, Response $response): Response
     {
-        $response->getBody()->write((string) json_encode(['total' => 3, 'byStatus' => ['available' => 2, 'adopted' => 1]]));
+        $response->getBody()->write(
+            (string) json_encode([
+                'total' => 3,
+                'byStatus' => ['available' => 2, 'adopted' => 1],
+            ]),
+        );
 
         return $response->withHeader('Content-Type', 'application/json');
     }
